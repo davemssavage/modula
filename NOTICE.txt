@@ -1,0 +1,47 @@
+This software has incorporated the Box class from the following project
+
+Lift (2.9.1)
+http://liftweb.net/
+Copyright 2007-2011 WorldWide Conferencing, LLC
+The Apache Software License, Version 2.0
+
+This software makes use of the following libraries:
+
+CGLib (2.2.2)
+http://cglib.sourceforge.net/
+The Apache Software License, Version 2.0
+
+Google Guava (13.0.1)
+https://code.google.com/p/guava-libraries/
+Copyright (c) The Guava Authors 2012
+The Apache Software License, Version 2.0
+
+JUnit (4.11)
+https://github.com/junit-team/junit
+Common Public License - v 1.0
+
+Mockito (1.9.5)
+https://code.google.com/p/mockito/
+Copyright (c) 2007 Mockito contributors
+The MIT License (MIT)
+
+Novocode Junit Interface (0.8)
+https://github.com/szeiger/junit-interface
+Copyright (c) 2009-2012, Stefan Zeiger
+Simplified BSD License
+
+Objenesis (1.2)
+http://objenesis.googlecode.com/svn/docs/index.html
+Copyright (c) 2003-2013, Objenesis Team and all contributors
+The Apache Software License, Version 2.0
+
+OSGi Core (5.0.0)
+http://www.osgi.org/
+Copyright (c) OSGi Alliance (2000, 2012)
+The Apache Software License, Version 2.0
+
+Scala (2.10.0)
+http://www.scala-lang.org/
+Copyright (c) 2002-2013 EPFL, Lausanne
+New BSD License
+
