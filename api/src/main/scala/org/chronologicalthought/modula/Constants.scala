@@ -63,5 +63,7 @@ object Constants {
 
   // TODO osgi has fragment namespace as well - decide if this is needed
   val ModuleNamespace = NamespaceBase + "module"
+  val ModuleID = ModuleNamespace + ".id"
+
   val PackageNamespace = NamespaceBase + "package"
 }

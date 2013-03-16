@@ -22,6 +22,7 @@ import reflect.GarbageCollector
 import reflect.ProxyBuilder.{identity, nullOp}
 import java.lang.IllegalStateException
 import collection.mutable.{HashSet, HashMap}
+import collection.mutable
 
 /**
  * @author David Savage
@@ -202,7 +203,13 @@ trait ModuleContext {
 
   def findModule(id: Long): Box[Module] = {
     if (id == module.id) Full(module)
-    else modules.get(id)
+    else {
+      def matchModuleId(attrs: Map[String, Any]) = attrs.get(Constants.ModuleID) match {
+        case Some(v) => id == v
+        case None => false
+      }
+      findServices(classOf[Module], matchModuleId).headOption
+    }
   }
 
   // TODO...think about withModule more...

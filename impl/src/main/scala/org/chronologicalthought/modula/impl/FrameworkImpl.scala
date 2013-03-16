@@ -115,7 +115,7 @@ abstract class FrameworkImpl(props: Map[String, Any]) extends Framework with Ser
 
   def start(): Future[ModuleLike] = {
     // TODO use promise future on start/stop...
-    selfRegistrations += context.register(this, classOf[Module])
+    selfRegistrations += context.register(this, classOf[Module], Map(Constants.ModuleID -> this.id))
     selfRegistrations += context.register(new ResolverImpl, classOf[Resolver])
     selfRegistrations += context.register(new GarbageCollectorImpl, classOf[GarbageCollector])
     selfRegistrations += context.register(new StandardJavaProxyBuilder, classOf[ProxyBuilder])
@@ -178,7 +178,7 @@ abstract class FrameworkImpl(props: Map[String, Any]) extends Framework with Ser
 
     provider.init(new ModuleProviderClassLoader(resolvableModule, parentCL))
 
-    val reg = module.context.register(resolvableModule, classOf[Module])
+    val reg = module.context.register(resolvableModule, classOf[Module], Map(Constants.ModuleID -> resolvableModule.id))
 
     writeLock {
       registeredProviders += provider -> reg
