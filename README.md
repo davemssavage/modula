@@ -1,6 +1,7 @@
+[![Build Status](https://travis-ci.org/davemssavage/modula.png)](https://travis-ci.org/davemssavage/modula)
+
 Modula
 ======
-[![Build Status](https://travis-ci.org/davemssavage/modula.png)](https://travis-ci.org/davemssavage/modula)
 
 Modula is a thought experiment in Scala modularity.
 
