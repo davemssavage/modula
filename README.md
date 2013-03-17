@@ -6,9 +6,6 @@ Modula is a thought experiment in modularity written using the Scala language.
 At the present time it is <em>unfinished</em> and <em>highly likely</em> to change so if you don't want to be hacking
 around with <b>breaking changes</b> this is <em>not the project you're looking for</em>.
 
-Build Status
---------
-
 [![Build Status](https://travis-ci.org/davemssavage/modula.png)](https://travis-ci.org/davemssavage/modula)
 
 Background
