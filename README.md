@@ -1,12 +1,11 @@
 Modula
 ======
+[![Build Status](https://travis-ci.org/davemssavage/modula.png)](https://travis-ci.org/davemssavage/modula)
 
-Modula is a thought experiment in modularity written using the Scala language.
+Modula is a thought experiment in Scala modularity.
 
 At the present time it is <em>unfinished</em> and <em>highly likely</em> to change so if you don't want to be hacking
 around with <b>breaking changes</b> this is <em>not the project you're looking for</em>.
-
-[![Build Status](https://travis-ci.org/davemssavage/modula.png)](https://travis-ci.org/davemssavage/modula)
 
 Background
 --------
@@ -66,7 +65,7 @@ The source code for this project is broken down into several sub projects
  * impl - Where the majority of the work is done
  * osgi - An experiment to see if it is possible to implement an OSGi framework on top of a Modula framework
  * main - Trivial project to start the Modula OSGi framework
- * tools - Barious utilities I cooked up to help in testing.
+ * tools - Various utilities I cooked up to help in testing.
 
 Building
 --------------
