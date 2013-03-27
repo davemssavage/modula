@@ -210,6 +210,16 @@ class VersionTest {
   }
 
   @Test
+  def versionToStringCollapsesRedundantInfo() {
+    def test(str: String, ver: String) {
+      assertEquals(str, Version(ver).toString)
+    }
+
+    test("1", "1.0")
+    test("1.1", "1.1.0")
+  }
+
+  @Test
   def assertInfinity() {
     assertEquals(Release, Version.Infinite.stage)
   }
