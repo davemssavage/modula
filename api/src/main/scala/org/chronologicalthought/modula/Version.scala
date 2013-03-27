@@ -110,12 +110,7 @@ object Version {
       new Version(m1, m2, m3, q, s)
     }
 
-    extractVersionParts match {
-      case Some(parts) => {
-        buildVersion(parts)
-      }
-      case None => throw new IllegalArgumentException("Invalid version format " + str)
-    }
+    extractVersionParts.map(buildVersion).getOrElse(throw new IllegalArgumentException("Invalid version format " + str))
   }
 }
 
