@@ -119,7 +119,7 @@ final case class Version(major: Int, minor: Int, micro: Int, qualifier: String, 
   assert(minor >= 0, "Minor version must be greater than zero")
   assert(micro >= 0, "Micro version must be greater than zero")
 
-  private val str = buildStr
+  private lazy val str = buildStr
 
   override def toString = str
 
@@ -148,61 +148,29 @@ final case class Version(major: Int, minor: Int, micro: Int, qualifier: String, 
   def intern = Version(str)
 
   private def buildStr: String = {
-    val b = new StringBuilder()
+    def prepend(v: Any, text: String): String = {
+      def valueIfNotEmpty(text: String, value: String) = if (text.length > 0) Some(value) else None
 
-    appendMinor(major, b)
+      val next = v match {
+        case i: Int => {
+          val r = if (i == 0) {
+            valueIfNotEmpty(text, i.toString)
+          }
+          else {
+            Some(i.toString)
+          }
 
-    b.toString()
-  }
-
-  // TODO should be able to tidy this up - recursive structure?
-  private def appendMinor(major: Int, b: StringBuilder) {
-    def appendQualifier() {
-      stage match {
-        case Release => b.append(".")
-        case PreRelease => b.append("-")
+          if (text.length > 0 && !(text.startsWith(".") || text.startsWith("-"))) r.map(_ + ".") else r
+        }
+        case Release => valueIfNotEmpty(text, ".")
+        case PreRelease => valueIfNotEmpty(text, "-")
       }
-      b.append(qualifier)
+
+      next.map(_ + text).getOrElse(text)
     }
 
-    if (minor == 0) {
-      if (micro == 0) {
-        if (qualifier != "") {
-          b.append(major)
-          b.append(".0.0")
-          appendQualifier()
-        }
-        else {
-          b.append(major)
-        }
-      }
-      else {
-        b.append(major)
-        b.append(".0.")
-        b.append(micro)
-        if (qualifier != "") {
-          appendQualifier()
-        }
-      }
-    }
-    else {
-      b.append(major)
-      b.append(".")
-      b.append(minor)
-      if (micro == 0) {
-        if (qualifier != "") {
-          b.append(".0")
-          appendQualifier()
-        }
-      }
-      else {
-        b.append(".")
-        b.append(micro)
-        if (qualifier != "") {
-          appendQualifier()
-        }
-      }
-    }
+    val parts = major :: minor :: micro :: stage :: Nil
+    parts.foldRight(if(qualifier == null) "Infinity" else qualifier)(prepend)
   }
 
   def compare(that: Version) = {
