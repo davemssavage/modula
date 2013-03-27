@@ -76,6 +76,8 @@ private[impl] class ResolvableModule(id: Long, provider: ModuleProvider, ctx: Mo
 
         val resolution = resolver.resolve(environment, this.requirements)
 
+        ResolvableModule.globalWiring = ResolvableModule.globalWiring + new RichWiring(resolution)
+
         debugResolution(resolution)
 
         if (resolution.isEmpty) {
@@ -110,7 +112,6 @@ private[impl] class ResolvableModule(id: Long, provider: ModuleProvider, ctx: Mo
     val modulesSnapshot = frameworkContext.modules.values
 
     new Environment {
-      // TODO define existing wiring
       def wiring = ResolvableModule.globalWiring.underlying
 
       def findProviders(requirements: Traversable[Requirement]) = {
