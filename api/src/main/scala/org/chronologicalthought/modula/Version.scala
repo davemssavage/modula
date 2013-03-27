@@ -216,35 +216,27 @@ final case class Version(major: Int, minor: Int, micro: Int, qualifier: String, 
   }
 
   def compare(that: Version) = {
-    var c = major compare that.major
+    def compare[T](v1: Ordered[T], v2: T) = {
+      val c = v1.compare(v2)
+      if (c == 0) None else Some(c)
+    }
 
-    if (c == 0) {
-      c = minor compare that.minor
-
-      if (c == 0) {
-        c = micro compare that.micro
-
-        if (c == 0) {
-          c = stage compare that.stage
-
-          if (c == 0) {
-            // null -> infinite
-            c = if (qualifier == null) {
-              if (that.qualifier == null) 0 else 1
-            }
-            else {
-              if (that.qualifier == null) {
-                -1
-              }
-              else {
-                qualifier compare that.qualifier
-              }
-            }
-          }
-        }
+    def compareQualifier[T](v1: String, v2: String) = {
+      // null represents infinity
+      if (v1 == null) {
+        if (v2 == null) None else Some(1)
+      }
+      else {
+        if (v2 == null) Some(-1) else compare(v1, v2)
       }
     }
 
-    c
+    val result = compare(major, that.major)
+      .orElse(compare(minor, that.minor))
+      .orElse(compare(micro, that.micro))
+      .orElse(compare(stage, that.stage))
+      .orElse(compareQualifier(qualifier, that.qualifier))
+
+    result.getOrElse(0)
   }
 }
