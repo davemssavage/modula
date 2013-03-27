@@ -152,7 +152,7 @@ final case class Version(major: Int, minor: Int, micro: Int, qualifier: String, 
 
     appendMinor(major, b)
 
-    b.toString
+    b.toString()
   }
 
   // TODO should be able to tidy this up - recursive structure?
