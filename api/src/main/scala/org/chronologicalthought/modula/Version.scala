@@ -58,14 +58,9 @@ object Version {
           }
         }
       }
-      pattern.unapplySeq(str) match {
-        case Some(list) => {
-          // filter null as versions of the form "1" generate a list containing
-          // Some(List(1, null, null, null))
-          Some(unpack(list.filter(_ != null)))
-        }
-        case None => None
-      }
+      // filter null as versions of the form "1" generate a list containing
+      // Some(List(1, null, null, null))
+      pattern.unapplySeq(str).map(list => unpack(list.filter(_ != null)))
     }
 
     def buildVersion(parts: List[String]) = {
