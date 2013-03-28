@@ -148,7 +148,7 @@ final case class Version(major: Int, minor: Int, micro: Int, qualifier: String, 
   def intern = Version(str)
 
   private def buildStr: String = {
-    def buildParts(v: Any, buf: List[String]): List[String] = {
+    def appendParts(v: Any, buf: List[String]): List[String] = {
       def appendValueIfBufNotEmpty(value: String) = if (buf.isEmpty) Nil else value :: Nil
 
       val next = v match {
@@ -160,7 +160,7 @@ final case class Version(major: Int, minor: Int, micro: Int, qualifier: String, 
             i.toString :: Nil
           }
 
-          if (buf.isEmpty|| buf.headOption.exists(value => value == "." || value == "-")) r else r ::: "." :: Nil
+          if (buf.isEmpty || buf.headOption.exists(v => v == "." || v == "-")) r else r ::: "." :: Nil
         }
         case Release => appendValueIfBufNotEmpty(".")
         case PreRelease => appendValueIfBufNotEmpty("-")
@@ -171,7 +171,7 @@ final case class Version(major: Int, minor: Int, micro: Int, qualifier: String, 
 
     val start = if(qualifier == null) "Infinity" :: Nil else if (qualifier.isEmpty) Nil else qualifier :: Nil
     val parts = major :: minor :: micro :: stage :: Nil
-    parts.foldRight(start)(buildParts).mkString("")
+    parts.foldRight(start)(appendParts).mkString("")
   }
 
   def compare(that: Version) = {
