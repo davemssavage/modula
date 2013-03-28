@@ -148,29 +148,30 @@ final case class Version(major: Int, minor: Int, micro: Int, qualifier: String, 
   def intern = Version(str)
 
   private def buildStr: String = {
-    def prepend(v: Any, text: String): String = {
-      def valueIfNotEmpty(text: String, value: String) = if (text.length > 0) Some(value) else None
+    def buildParts(v: Any, buf: List[String]): List[String] = {
+      def appendValueIfBufNotEmpty(value: String) = if (buf.isEmpty) Nil else value :: Nil
 
       val next = v match {
         case i: Int => {
           val r = if (i == 0) {
-            valueIfNotEmpty(text, i.toString)
+            appendValueIfBufNotEmpty(i.toString)
           }
           else {
-            Some(i.toString)
+            i.toString :: Nil
           }
 
-          if (text.length > 0 && !(text.startsWith(".") || text.startsWith("-"))) r.map(_ + ".") else r
+          if (buf.isEmpty|| buf.headOption.exists(value => value == "." || value == "-")) r else r ::: "." :: Nil
         }
-        case Release => valueIfNotEmpty(text, ".")
-        case PreRelease => valueIfNotEmpty(text, "-")
+        case Release => appendValueIfBufNotEmpty(".")
+        case PreRelease => appendValueIfBufNotEmpty("-")
       }
 
-      next.map(_ + text).getOrElse(text)
+      if (next.isEmpty) next else next ::: buf
     }
 
+    val start = if(qualifier == null) "Infinity" :: Nil else if (qualifier.isEmpty) Nil else qualifier :: Nil
     val parts = major :: minor :: micro :: stage :: Nil
-    parts.foldRight(if(qualifier == null) "Infinity" else qualifier)(prepend)
+    parts.foldRight(start)(buildParts).mkString("")
   }
 
   def compare(that: Version) = {
