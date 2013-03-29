@@ -107,6 +107,25 @@ trait ModuleContext {
     })
   }
 
+  // TODO don't like the name of this method, but it is very useful...
+  def withAnyFlat[T, R](clazz: Class[T])(f: (T => Box[R])): Box[R] = {
+    val refs = findReferences(clazz)
+    val start: Box[(T, ServiceReference[T])] = Empty
+
+    def firstServiceWithReference[S](found: Box[(S, ServiceReference[S])], nextReference: ServiceReference[S]) = {
+      found.or(nextReference.get().map((_, nextReference)))
+    }
+
+    refs.foldLeft(start)(firstServiceWithReference).flatMap(serviceAndReference => {
+      try {
+        f(serviceAndReference._1)
+      }
+      finally {
+        serviceAndReference._2.unget(serviceAndReference._1)
+      }
+    })
+  }
+
   def withEach[T, R](clazz: Class[T])(f: (T => R)): Traversable[R] = {
     withEach(clazz, _ => true)(f)
   }
