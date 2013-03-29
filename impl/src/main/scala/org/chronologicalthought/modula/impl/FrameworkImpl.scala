@@ -120,6 +120,7 @@ abstract class FrameworkImpl(props: Map[String, Any]) extends Framework with Ser
     selfRegistrations += context.register(new GarbageCollectorImpl, classOf[GarbageCollector])
     selfRegistrations += context.register(new StandardJavaProxyBuilder, classOf[ProxyBuilder])
     selfRegistrations += context.register(new ObjenesisProxyBuilder, classOf[ProxyBuilder])
+    selfRegistrations += context.register(new GlobalWiring(context))
 
     val moduleProviderListener = listener {
       case ServiceRegisteredEvent(reference, interfaces, _) => {

@@ -16,19 +16,21 @@
 package org.chronologicalthought.modula.impl
 
 import org.chronologicalthought.modula._
-import RichTypes._
 import scala.Some
 
 /**
  * @author David Savage
  */
+private[impl] object WiredModules {
+  val Empty = new WiredModules(Nil, Nil)
+}
 
 private[impl] case class WiredModules(dependents: Traversable[Module], extensions: Traversable[Module]) {
   lazy val all = dependents.toList ::: extensions.toList
 }
 
 private [impl] object ResolvableModule {
-  private var globalWiring = RichWiring.empty
+
 }
 
 private[impl] class ResolvableModule(id: Long, provider: ModuleProvider, ctx: ModuleContextImpl, frameworkContext: ModuleContext) extends ModuleProviderWrapper(id, provider, ctx) with StatefulModule {
@@ -70,74 +72,28 @@ private[impl] class ResolvableModule(id: Long, provider: ModuleProvider, ctx: Mo
   override def toString = provider.name + ":" + provider.version
 
   private def doResolveModules(): WiredModules = {
-    val resolved = frameworkContext.withAny(classOf[Resolver]) {
-      resolver => {
-        val environment = buildSnapshotEnvironment
-
-        val resolution = resolver.resolve(environment, this.requirements)
-
-        ResolvableModule.globalWiring = ResolvableModule.globalWiring + new RichWiring(resolution)
-
-        debugResolution(resolution)
-
-        if (resolution.isEmpty) {
-          new WiredModules(Nil, Nil)
-        }
-        else {
-          val root = if (resolution.contains(this)) {
-            this
-          } else {
-            resolution.keys.find(p => p match {
-              case c@CompositePart(parts) => parts.contains(this)
-              case _ => false
-            }) match {
-              case Some(m) => m
-              case None => throw new IllegalStateException("Failed to locate root in " + resolution)
-            }
+    val resolved = frameworkContext.withAnyFlat(classOf[GlobalWiring]){
+      wiring => {
+        wiring.resolve(this).flatMap(resolution => {
+          if (resolution.isEmpty) {
+            Full(WiredModules.Empty)
           }
+          else {
+            new RichWiring(resolution).find(this).map(root => {
+              val dependents = getDependentModules(root, resolution)
+              val extensions = getExtensions(root)
 
-          val dependents = getDependentModules(root, resolution)
-          val extensions = getExtensions(root)
-
-          new WiredModules(dependents, extensions)
-        }
+              new WiredModules(dependents, extensions)
+            })
+          }
+        })
       }
     }
-
-    // TODO define better exception for missing resolver
-    resolved.openOr(throw new IllegalStateException("Expected resolver registered"))
+    // TODO define better exception for missing global wiring
+    resolved.openOr(throw new IllegalStateException("Expected global wiring registered"))
   }
 
-  private def buildSnapshotEnvironment = {
-    val modulesSnapshot = frameworkContext.modules.values
 
-    new Environment {
-      def wiring = ResolvableModule.globalWiring.underlying
-
-      def findProviders(requirements: Traversable[Requirement]) = {
-        val capabilities = modulesSnapshot.flatMap(_.capabilities)
-        for {
-          req <- requirements
-          cap <- capabilities
-          if (req.matches(cap))
-        } yield cap
-        // TODO add capability provider service lookup
-      }
-
-      def findExtensions(capabilities: Traversable[Capability]) = {
-        val requirements = modulesSnapshot.flatMap(_.requirements)
-        for {
-          req <- requirements
-          cap <- capabilities
-          if (req.matches(cap))
-        } yield req
-        // TODO add requirement provider service lookup?
-        // what is a requirement provider??
-      }
-
-      def requirementFilter = None
-    }
-  }
 
   private def getDependentModules(root: Part, resolution: Map[Part, Traversable[Wire]]): Traversable[Module] = {
     resolution.get(root) match {
