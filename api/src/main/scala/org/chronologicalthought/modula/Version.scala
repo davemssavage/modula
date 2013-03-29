@@ -166,8 +166,8 @@ final case class Version(major: Int, minor: Int, micro: Int, qualifier: String, 
     val mj = major.toString
     val mn = minor.toString
     val mc = micro.toString
-    val q = if(qualifier == null) "Infinity" else qualifier
-    val s = (if (stage == Release) "." else "-")
+    val q = if (qualifier == null) "Infinity" else qualifier
+    val s = if (stage == Release) "." else "-"
 
     val parts = mj :: mn :: mc :: s :: q :: Nil
     val start: List[String] = Nil
