@@ -29,10 +29,6 @@ private[impl] case class WiredModules(dependents: Traversable[Module], extension
   lazy val all = dependents.toList ::: extensions.toList
 }
 
-private [impl] object ResolvableModule {
-
-}
-
 private[impl] class ResolvableModule(id: Long, provider: ModuleProvider, ctx: ModuleContextImpl, frameworkContext: ModuleContext) extends ModuleProviderWrapper(id, provider, ctx) with StatefulModule {
   private var wiredModules: Option[WiredModules] = None
 
