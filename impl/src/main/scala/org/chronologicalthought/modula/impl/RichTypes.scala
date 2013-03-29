@@ -171,6 +171,17 @@ private[impl] object RichWiring {
 }
 
 private[impl] class RichWiring(val underlying: Map[Part, List[Wire]]) {
+  def find(part: Part): Option[Part] = {
+    if (underlying.contains(part)) {
+      Some(part)
+    } else {
+      underlying.keys.find(p => p match {
+        case c@CompositePart(parts) => parts.contains(part)
+        case _ => false
+      })
+    }
+  }
+
   def +(wiring: RichWiring) = {
     val tmp = new collection.mutable.HashMap[Part, List[Wire]]
 
