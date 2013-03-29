@@ -149,28 +149,29 @@ final case class Version(major: Int, minor: Int, micro: Int, qualifier: String, 
 
   private def buildStr: String = {
     def appendParts(v: Any, buf: List[String]): List[String] = {
-      def appendValueIfBufNotEmpty(value: String) = if (buf.isEmpty) Nil else value :: Nil
+      def pushValueIfBufNotEmpty(value: String) = if (buf.isEmpty) Nil else value :: Nil
+      def pushDotIfNecessary(r: List[String]) = if (buf.isEmpty || buf.headOption.exists(v => v == "." || v == "-")) r else r ::: "." :: Nil
 
       val next = v match {
-        case i: Int => {
-          val r = if (i == 0) {
-            appendValueIfBufNotEmpty(i.toString)
-          }
-          else {
-            i.toString :: Nil
-          }
-
-          if (buf.isEmpty || buf.headOption.exists(v => v == "." || v == "-")) r else r ::: "." :: Nil
-        }
-        case Release => appendValueIfBufNotEmpty(".")
-        case PreRelease => appendValueIfBufNotEmpty("-")
+        case "" => Nil
+        case "0" => pushDotIfNecessary(pushValueIfBufNotEmpty("0"))
+        case "." => pushValueIfBufNotEmpty(".")
+        case "-" => pushValueIfBufNotEmpty("-")
+        case str: String => pushDotIfNecessary(str :: Nil)
       }
 
-      if (next.isEmpty) next else next ::: buf
+      next ::: buf
     }
 
-    val start = if(qualifier == null) "Infinity" :: Nil else if (qualifier.isEmpty) Nil else qualifier :: Nil
-    val parts = major :: minor :: micro :: stage :: Nil
+    val mj = major.toString
+    val mn = minor.toString
+    val mc = micro.toString
+    val q = if(qualifier == null) "Infinity" else qualifier
+    val s = (if (stage == Release) "." else "-")
+
+    val parts = mj :: mn :: mc :: s :: q :: Nil
+    val start: List[String] = Nil
+
     parts.foldRight(start)(appendParts).mkString("")
   }
 
