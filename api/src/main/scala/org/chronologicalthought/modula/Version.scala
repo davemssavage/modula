@@ -149,15 +149,15 @@ final case class Version(major: Int, minor: Int, micro: Int, qualifier: String, 
 
   private def buildStr: String = {
     def appendParts(v: Any, buf: List[String]): List[String] = {
-      def pushValueIfBufNotEmpty(value: String) = if (buf.isEmpty) Nil else value :: Nil
-      def pushDotIfNecessary(r: List[String]) = if (buf.isEmpty || buf.headOption.exists(v => v == "." || v == "-")) r else r ::: "." :: Nil
+      def pushValue(value: String) = if (buf.isEmpty) Nil else value :: Nil
+      def pushDot(r: List[String]) = if (buf.isEmpty || buf.headOption.exists(v => v == "." || v == "-")) r else r ::: "." :: Nil
 
       val next = v match {
         case "" => Nil
-        case "0" => pushDotIfNecessary(pushValueIfBufNotEmpty("0"))
-        case "." => pushValueIfBufNotEmpty(".")
-        case "-" => pushValueIfBufNotEmpty("-")
-        case str: String => pushDotIfNecessary(str :: Nil)
+        case "0" => pushDot(pushValue("0"))
+        case "." => pushValue(".")
+        case "-" => pushValue("-")
+        case str: String => pushDot(str :: Nil)
       }
 
       next ::: buf
