@@ -148,7 +148,7 @@ final case class Version(major: Int, minor: Int, micro: Int, qualifier: String, 
   def intern = Version(str)
 
   private def buildStr: String = {
-    def appendParts(v: Any, buf: List[String]): List[String] = {
+    def appendParts(v: String, buf: List[String]): List[String] = {
       def pushValue(value: String) = if (buf.isEmpty) Nil else value :: Nil
       def pushDot(r: List[String]) = if (buf.isEmpty || buf.headOption.exists(v => v == "." || v == "-")) r else r ::: "." :: Nil
 
@@ -157,7 +157,7 @@ final case class Version(major: Int, minor: Int, micro: Int, qualifier: String, 
         case "0" => pushDot(pushValue("0"))
         case "." => pushValue(".")
         case "-" => pushValue("-")
-        case str: String => pushDot(str :: Nil)
+        case other: String => pushDot(other :: Nil)
       }
 
       next ::: buf
