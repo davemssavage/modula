@@ -20,12 +20,10 @@ import annotation.tailrec
 import collection.mutable.ArrayBuffer
 import org.chronologicalthought.modula._
 import org.chronologicalthought.modula.impl.RichTypes._
-import org.chronologicalthought.modula.Constants.Directives._
 
 /**
  * @author David Savage
  */
-
 class ResolverImpl extends Resolver {
   def resolve(environment: Environment, requirements: List[Requirement]): Box[Map[Part, List[Wire]]] = {
     assert(environment != null, "Environment cannot be null")
@@ -38,7 +36,7 @@ class ResolverImpl extends Resolver {
         // now try and attach extensions
         // TODO possibly policy based - eager attach extensions?
         attachExtensions(wiring, environment) match {
-          case Resolved(wiring) => Full(wiring)
+          case Resolved(result) => Full(result)
           case PartialResolution(_) => Failure(throw new IllegalStateException("No valid extensions for " + requirements))
           case Failed(msg, _) => Failure(throw new IllegalStateException(msg))
         }
@@ -123,7 +121,7 @@ class ResolverImpl extends Resolver {
     val start = new PartialResolution(RichWiring.empty)
     val result = walk(requirements, start) {
       (resolution, requirement) => {
-        ticker.tick
+        ticker.tick()
         matchProvider(environment, resolution, requirement, visited)
       }
     }
@@ -150,7 +148,7 @@ class ResolverImpl extends Resolver {
       val result = walk(capabilities, resolution) {
         (resolution, capability) => {
           if (relevantAndConsistent(capability)) {
-            ticker.tick
+            ticker.tick()
             val wire = new Wire(requirement, capability)
             addWire(environment, wire, resolution.wiring, visited)
           }
@@ -248,21 +246,18 @@ private object NoOp extends Resolved(RichWiring.empty) {
   }
 }
 
-//private case object NoOpOld extends Resolved(RichWiring.empty)
-
 private class Ticker {
   var ticked = false;
 
-  def tick {
+  def tick() {
     ticked = true
   }
 }
 
-
 object ResolverTrace {
   val traceLocal = new ThreadLocal[ArrayBuffer[Frame]]
 
-  def startTrace {
+  def startTrace() {
     traceLocal.set(new ArrayBuffer)
   }
 
@@ -304,7 +299,7 @@ case class End(wire: Wire, wiring: Map[Part, List[Wire]], visited: Set[Part]) ex
   }
 }
 
-private case class PotentialEnvironment(val wiring: Map[Part, List[Wire]], parent: Environment) extends Environment {
+private case class PotentialEnvironment(wiring: Map[Part, List[Wire]], parent: Environment) extends Environment {
   assert(wiring != null)
   assert(parent != null)
 
@@ -334,7 +329,7 @@ private case class PotentialEnvironment(val wiring: Map[Part, List[Wire]], paren
     new Iterator[Capability] {
       def next() = {
         if (matched.hasNext)
-          matched.next
+          matched.next()
         else {
           val p = environmentCapabilities()
           nextFromEnvironment(p, true) match {
@@ -380,15 +375,15 @@ private case class PotentialEnvironment(val wiring: Map[Part, List[Wire]], paren
             @tailrec
             def findNext(): Option[Capability] = {
               if (p.hasNext) {
-                val cap = p.next
-                if (requirements.exists(_.matches(cap))) Some(cap) else findNext
+                val cap = p.next()
+                if (requirements.exists(_.matches(cap))) Some(cap) else findNext()
               }
               else {
                 None
               }
             }
 
-            n = findNext
+            n = findNext()
             n
           }
         }
@@ -414,7 +409,7 @@ private case class PotentialEnvironment(val wiring: Map[Part, List[Wire]], paren
     new Iterator[Requirement] {
       def next() = {
         if (matched.hasNext)
-          matched.next
+          matched.next()
         else {
           val p = environmentRequirements()
           nextFromEnvironment(p, true) match {
@@ -460,15 +455,15 @@ private case class PotentialEnvironment(val wiring: Map[Part, List[Wire]], paren
             @tailrec
             def findNext(): Option[Requirement] = {
               if (p.hasNext) {
-                val req = p.next
-                if (capabilities.exists(req.matches(_))) Some(req) else findNext
+                val req = p.next()
+                if (capabilities.exists(req.matches(_))) Some(req) else findNext()
               }
               else {
                 None
               }
             }
 
-            n = findNext
+            n = findNext()
             n
           }
         }
