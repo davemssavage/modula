@@ -84,7 +84,7 @@ class ResolverTest {
 
     val resolver = locateResolver(framework)
 
-    val delta = resolver.resolve(environment, Nil)
+    val delta = resolver.resolve(environment, Nil).openOrThrowException("Failed to resolve empty")
 
     assertTrue(delta.isEmpty)
   }
@@ -138,7 +138,7 @@ class ResolverTest {
 
     val resolver = locateResolver(framework)
 
-    val delta = resolver.resolve(environment, requirement)
+    val delta = resolver.resolve(environment, requirement).openOrThrowException("Failed to resolve %s".format(requirement))
 
     assertFoundPartAndWire(delta, part, new Wire(requirement, part.capabilities.head))
   }
@@ -160,7 +160,7 @@ class ResolverTest {
 
     val resolver = locateResolver(framework)
 
-    val delta = resolver.resolve(environment, requirement)
+    val delta = resolver.resolve(environment, requirement).openOrThrowException("Failed to resolve %s".format(requirement))
 
     assertTrue(delta.isEmpty)
   }
@@ -185,7 +185,7 @@ class ResolverTest {
 
     val root = required("foo")
 
-    val delta = resolver.resolve(environment, root)
+    val delta = resolver.resolve(environment, root).openOrThrowException("Failed to resolve %s".format(root))
 
     assertFoundPartAndWire(delta, part1, new Wire(root, part1.capabilities.head))
     assertFoundPartAndWire(delta, part1, new Wire(part1.requirements.head, part3.capabilities.head))
@@ -212,7 +212,7 @@ class ResolverTest {
     val root = required("foo")
 
     ResolverTrace.startTrace
-    val delta = resolver.resolve(environment, root)
+    val delta = resolver.resolve(environment, root).openOrThrowException("Failed to resolve %s".format(root))
     ResolverTrace.endTrace.foreach(frame => {
       frame match {
         case Start(wire, _, _) => println(wire)
@@ -245,7 +245,7 @@ class ResolverTest {
     val resolver = locateResolver(framework)
 
     val root = required("foo", LDAPExpr("version=1"))
-    val delta = resolver.resolve(environment, root)
+    val delta = resolver.resolve(environment, root).openOrThrowException("Failed to resolve %s".format(root))
 
     assertNotNull(delta)
     assertFalse(delta.isEmpty)
@@ -283,7 +283,7 @@ class ResolverTest {
       when(environment.wiring).thenReturn(Map[Part, Traversable[Wire]]())
       when(environment.requirementFilter).thenReturn(None)
 
-      val delta = resolver.resolve(environment, root)
+      val delta = resolver.resolve(environment, root).openOrThrowException("Failed to resolve %s".format(root))
 
       assertNotNull(delta)
       assertFalse(delta.isEmpty)
@@ -328,7 +328,7 @@ class ResolverTest {
     val root = required("foo")
 
     ResolverTrace.startTrace
-    val delta = resolver.resolve(environment, root)
+    val delta = resolver.resolve(environment, root).openOrThrowException("Failed to resolve %s".format(root))
     ResolverTrace.endTrace.foreach(frame => {
       frame match {
         case Start(wire, _, _) => println(wire)
@@ -366,7 +366,7 @@ class ResolverTest {
 
     val resolver = locateResolver(framework)
 
-    val delta = resolver.resolve(environment, requirement)
+    val delta = resolver.resolve(environment, requirement).openOrThrowException("Failed to resolve %s".format(requirement))
 
     assertFoundPartAndWire(delta, part, new Wire(requirement, part.capabilities.head))
   }
@@ -414,7 +414,7 @@ class ResolverTest {
   }
 
   private def assertFoundPartAndWire(delta: Map[Part, Traversable[Wire]], part: Part, wire: Wire) {
-    var wiring = delta.getOrElse(part, throw new AssertionError("Failed to resolve " + part + "\nfound:\n" + delta.keys))
+    val wiring = delta.getOrElse(part, throw new AssertionError("Failed to resolve " + part + "\nfound:\n" + delta.keys))
     assertTrue("Expected " + wire + " found:\n" + wiring.mkString("\n"), wiring.exists(_ == wire))
   }
 

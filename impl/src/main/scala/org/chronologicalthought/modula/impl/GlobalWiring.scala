@@ -25,15 +25,14 @@ class GlobalWiring(context: ModuleContext) {
   private var globalWiring = RichWiring.empty
 
   def resolve(module: Module) = {
-    context.withAny(classOf[Resolver]) {
-      resolver => {
-        val environment = buildSnapshotEnvironment()
+    synchronized {
+      val environment = buildSnapshotEnvironment()
 
-        val resolution = resolver.resolve(environment, module.requirements)
-
-        globalWiring = globalWiring + new RichWiring(resolution)
-
-        resolution
+      context.withAnyFlat(classOf[Resolver])(_.resolve(environment, module.requirements)).map {
+        resolution => {
+          globalWiring = globalWiring + new RichWiring(resolution)
+          resolution
+        }
       }
     }
   }

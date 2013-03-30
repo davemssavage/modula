@@ -52,7 +52,7 @@ class ResolverPerformanceTest {
 
     val root = required("cap" + 1)
 
-    val delta = resolver.resolve(environment, root)
+    val delta = resolver.resolve(environment, root).openOrThrowException("Failed to resolve %s".format(root))
 
     assertNotNull(delta)
     assertFalse(delta.isEmpty)
@@ -77,7 +77,6 @@ class ResolverPerformanceTest {
 
   private def createFramework() = {
     val framework = newFramework()
-    val context = framework.context
     framework.start()
     framework
   }

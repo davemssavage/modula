@@ -21,9 +21,9 @@ package org.chronologicalthought.modula
  */
 
 trait Resolver {
-  def resolve(environment: Environment, requirement: Requirement): Map[Part, List[Wire]] = {
+  def resolve(environment: Environment, requirement: Requirement): Box[Map[Part, List[Wire]]] = {
     resolve(environment, requirement :: Nil)
   }
 
-  def resolve(environment: Environment, requirements: List[Requirement]): Map[Part, List[Wire]]
+  def resolve(environment: Environment, requirements: List[Requirement]): Box[Map[Part, List[Wire]]]
 }

@@ -27,7 +27,7 @@ import org.chronologicalthought.modula.Constants.Directives._
  */
 
 class ResolverImpl extends Resolver {
-  def resolve(environment: Environment, requirements: List[Requirement]): Map[Part, List[Wire]] = {
+  def resolve(environment: Environment, requirements: List[Requirement]): Box[Map[Part, List[Wire]]] = {
     assert(environment != null, "Environment cannot be null")
     assert(requirements != null, "Requirements cannot be null")
     assert(!requirements.exists(_ == null), "Requirements cannot contain null")
@@ -38,13 +38,13 @@ class ResolverImpl extends Resolver {
         // now try and attach extensions
         // TODO possibly policy based - eager attach extensions?
         attachExtensions(wiring, environment) match {
-          case Resolved(wiring) => wiring
-          case PartialResolution(_) => throw new IllegalStateException("No valid extensions for " + requirements)
-          case Failed(msg, _) => throw new IllegalStateException(msg)
+          case Resolved(wiring) => Full(wiring)
+          case PartialResolution(_) => Failure(throw new IllegalStateException("No valid extensions for " + requirements))
+          case Failed(msg, _) => Failure(throw new IllegalStateException(msg))
         }
       }
-      case PartialResolution(_) => throw new IllegalStateException("No valid resolutions for " + requirements)
-      case Failed(msg, _) => throw new IllegalStateException(msg)
+      case PartialResolution(_) => Failure(throw new IllegalStateException("No valid resolutions for " + requirements))
+      case Failed(msg, _) => Failure(throw new IllegalStateException(msg))
     }
   }
 
