@@ -22,7 +22,6 @@ import reflect.GarbageCollector
 import reflect.ProxyBuilder.{identity, nullOp}
 import java.lang.IllegalStateException
 import collection.mutable.{HashSet, HashMap}
-import collection.mutable
 
 /**
  * @author David Savage
