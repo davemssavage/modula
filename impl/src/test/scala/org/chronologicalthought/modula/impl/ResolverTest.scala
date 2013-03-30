@@ -211,7 +211,7 @@ class ResolverTest {
 
     val root = required("foo")
 
-    ResolverTrace.startTrace
+    ResolverTrace.startTrace()
     val delta = resolver.resolve(environment, root).openOrThrowException("Failed to resolve %s".format(root))
     ResolverTrace.endTrace.foreach(frame => {
       frame match {
