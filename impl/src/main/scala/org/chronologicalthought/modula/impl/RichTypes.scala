@@ -44,6 +44,8 @@ object RichTypes {
   }
 
   implicit def richWiringToWiring(wiring: RichWiring) = wiring.underlying
+
+  implicit def wiringToRichWiring(underlying: Map[Part, List[Wire]]) = new RichWiring(underlying)
 }
 
 // wraps any object that defines a method directives: Map[String, Any] !!

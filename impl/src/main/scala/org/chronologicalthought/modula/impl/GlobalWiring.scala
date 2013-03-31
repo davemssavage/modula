@@ -30,7 +30,7 @@ class GlobalWiring(context: ModuleContext) {
 
       context.withAnyFlat(classOf[Resolver])(_.resolve(environment, module.requirements)).map {
         resolution => {
-          globalWiring = globalWiring + new RichWiring(resolution)
+          globalWiring = globalWiring + resolution
           resolution
         }
       }
