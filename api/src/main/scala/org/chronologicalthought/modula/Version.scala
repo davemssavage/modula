@@ -125,17 +125,10 @@ final case class Version(major: Int, minor: Int, micro: Int, qualifier: String, 
 
   override def equals(other: Any): Boolean = {
     other match {
-      case another: AnyRef => {
-        if (this eq another) true
-        else if (another eq null) false
-        else {
-          other match {
-            case v: Version => {
-              str eq v.str
-            }
-            case _ => false
-          }
-        }
+      case v: Version => {
+        if (this eq v) true
+        else if (v eq null) false
+        else str eq v.str
       }
       case _ => false
     }
