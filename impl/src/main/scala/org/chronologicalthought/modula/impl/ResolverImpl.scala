@@ -119,7 +119,7 @@ class ResolverImpl extends Resolver {
 
   private def doResolve(environment: Environment, requirements: Traversable[Requirement], visited: Set[Part], ticker: Ticker) = {
     val start = new PartialResolution(RichWiring.empty)
-    val result = walk(requirements, start) {
+    val result = walk(start, requirements) {
       (resolution, requirement) => {
         ticker.tick()
         matchProvider(environment, resolution, requirement, visited)
@@ -145,7 +145,7 @@ class ResolverImpl extends Resolver {
       val capabilities = environment.findProviders(requirement :: Nil)
 
       val ticker = new Ticker
-      val result = walk(capabilities, resolution) {
+      val result = walk(resolution, capabilities) {
         (resolution, capability) => {
           if (relevantAndConsistent(capability)) {
             ticker.tick()
@@ -211,23 +211,18 @@ class ResolverImpl extends Resolver {
     }
   }
 
-  private def walk[T](t: TraversableOnce[T], start: PartialResolution)(f: (PartialResolution, T) => Resolution): Resolution = {
-    var res = start
-
-    if (t == null) {
-      throw new NullPointerException
-    }
+  private def walk[T](start: PartialResolution, provider: TraversableOnce[T])(op: (PartialResolution, T) => Resolution): Resolution = {
+    var result: Resolution = start
 
     // TODO parallel!!
-    for (e <- t) {
-      f(res, e) match {
-        case r@Resolved(_) => return r
-        case f@Failed(_, _) => return f
-        case p@PartialResolution(_) => res = p
+    for (part <- provider) {
+      result = result match {
+        case p: PartialResolution => op(p, part)
+        case other => return other // failed or resolved -> return to break out of provider search early
       }
     }
 
-    res
+    result
   }
 }
 
