@@ -174,38 +174,19 @@ private[impl] object RichWiring {
 
 private[impl] class RichWiring(val underlying: Map[Part, List[Wire]]) {
   def find(part: Part): Option[Part] = {
-    if (underlying.contains(part)) {
-      Some(part)
-    } else {
-      underlying.keys.find(p => p match {
-        case c@CompositePart(parts) => parts.contains(part)
-        case _ => false
-      })
-    }
+    underlying.keys.find(_ match {
+      case CompositePart(parts) => parts.contains(part)
+      case other => other == part
+    })
   }
 
   def +(wiring: RichWiring) = {
     val tmp = new collection.mutable.HashMap[Part, List[Wire]]
 
-    // TODO this assumes new composite parts are only found in wiring not this
-    def partFor(part: Part) = {
-      // TODO use get for part as this will be faster due to hashCode lookup
-      val map = wiring.underlying
-      val found = map.keys.find(p => p match {
-        case CompositePart(parts) => {
-          parts.contains(part)
-        }
-        case other => other == part
-      })
-      found match {
-        case Some(p) => p
-        case None => part
-      }
-    }
-
     for ((part, wires) <- underlying) {
-      val p = partFor(part)
-      tmp += p -> wires.map((w: Wire) => w.updatePart(part, p).underlying)
+      // attempt to find part in wiring to ensure merged wires are bound to correctly
+      val p = wiring.find(part).getOrElse(part)
+      tmp += p -> wires.map(_.updatePart(part, p).underlying)
     }
 
     for ((part, wires) <- wiring.underlying) {
@@ -226,6 +207,33 @@ private[impl] class RichWiring(val underlying: Map[Part, List[Wire]]) {
     else {
       link(wire)
     }
+  }
+
+  def -(wire: Wire): RichWiring = {
+    wire.requirement.part match {
+      // TODO undo composite part here?
+      case Some(part) => this - (wire.capability.part -> wire) - (part -> wire)
+      case None => this - (wire.capability.part -> wire)
+    }
+  }
+
+  def +(part: Part) {
+    val existing = underlying.getOrElse(part, Nil)
+    new RichWiring(underlying + (part -> existing))
+  }
+
+  def -(part: Part): RichWiring = new RichWiring(underlying - part)
+
+  def parts = underlying.keySet.toSet
+
+  def unsatisfied: Traversable[Requirement] = {
+    underlying.collect({
+      case (part, Nil) => part.requirements
+      case (part, wires) => {
+        val found = wires.map(_.requirement)
+        part.requirements.filterNot(found.contains(_))
+      }
+    }).flatten
   }
 
   private def merge(wire: Wire): RichWiring = {
@@ -267,33 +275,6 @@ private[impl] class RichWiring(val underlying: Map[Part, List[Wire]]) {
       case Some(part) => this + (wire.capability.part -> wire) + (part -> wire)
       case None => this + (wire.capability.part -> wire)
     }
-  }
-
-  def -(wire: Wire): RichWiring = {
-    wire.requirement.part match {
-      // TODO undo composite part here?
-      case Some(part) => this - (wire.capability.part -> wire) - (part -> wire)
-      case None => this - (wire.capability.part -> wire)
-    }
-  }
-
-  def +(part: Part) {
-    val existing = underlying.getOrElse(part, Nil)
-    new RichWiring(underlying + (part -> existing))
-  }
-
-  def -(part: Part): RichWiring = new RichWiring(underlying - part)
-
-  def parts = underlying.keySet.toSet
-
-  def unsatisfied: Traversable[Requirement] = {
-    underlying.collect({
-      case (part, Nil) => part.requirements
-      case (part, wires) => {
-        val found = wires.map(_.requirement)
-        part.requirements.filterNot(found.contains(_))
-      }
-    }).flatten
   }
 
   private def +(partToWire: (Part, Wire)): RichWiring = {
