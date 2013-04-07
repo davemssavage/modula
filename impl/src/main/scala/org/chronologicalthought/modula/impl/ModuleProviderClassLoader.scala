@@ -43,8 +43,12 @@ class ModuleProviderClassLoader(module: ResolvableModule, parent: ClassLoader) e
     else {
       resourcesCycleCheck.withValue(current + module) {
         val local = false
-        val modules = module.resolveModules(wire)
-        modules.dependents.flatMap(_.resources(filter, wire, local)) ++: modules.extensions.flatMap(_.resources(filter, wire, local))
+        val result = module.resolveModules(wire)
+        result.map {
+          modules => {
+            modules.dependents.flatMap(_.resources(filter, wire, local)) ++: modules.extensions.flatMap(_.resources(filter, wire, local))
+          }
+        }.getOrElse(Nil)
       }
     }
   }
@@ -92,27 +96,31 @@ class ModuleProviderClassLoader(module: ResolvableModule, parent: ClassLoader) e
   }
 
   private def searchModuleSpace[T](pkg: String, name: String): Box[Class[T]] = {
-    val modules = module.resolveModules(wire = true)
+    val result = module.resolveModules(wire = true)
 
     def exportsPackage(capability: Capability): Boolean = {
       import Constants.PackageNamespace
       capability.namespace == PackageNamespace && capability.attributes(PackageNamespace) == pkg
     }
 
-    // TODO handle split packages by walking vs assuming first?
-    // capability should have directive to state whether can merge split packages
-    // handle similar to fragements?
-    modules.dependents.find(_.capabilities.exists(exportsPackage)) match {
-      case Some(m) => m.loadClass(name).asInstanceOf[Box[Class[T]]]
-      case None => {
-        // ok dependencies didn't find it try extensions
-        val start: Box[Class[_]] = Empty
+    result.flatMap {
+      modules => {
+        // TODO handle split packages by walking vs assuming first?
+        // capability should have directive to state whether can merge split packages
+        // handle similar to fragements?
+        modules.dependents.find(_.capabilities.exists(exportsPackage)) match {
+          case Some(m) => m.loadClass(name).asInstanceOf[Box[Class[T]]]
+          case None => {
+            // ok dependencies didn't find it try extensions
+            val start: Box[Class[_]] = Empty
 
-        def firstLoaded(found: Box[Class[_]], nextModule: ModuleLike) = found.or(nextModule.loadClass(name))
+            def firstLoaded(found: Box[Class[_]], nextModule: ModuleLike) = found.or(nextModule.loadClass(name))
 
-        val clazz = modules.extensions.foldLeft(start)(firstLoaded)
+            val clazz = modules.extensions.foldLeft(start)(firstLoaded)
 
-        clazz.map(_.asInstanceOf[Class[T]])
+            clazz.map(_.asInstanceOf[Class[T]])
+          }
+        }
       }
     }
   }

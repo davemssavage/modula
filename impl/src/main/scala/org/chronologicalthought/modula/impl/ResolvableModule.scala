@@ -30,25 +30,23 @@ private[impl] case class WiredModules(dependents: Traversable[Module], extension
 }
 
 private[impl] class ResolvableModule(id: Long, provider: ModuleProvider, ctx: ModuleContextImpl, frameworkContext: ModuleContext) extends ModuleProviderWrapper(id, provider, ctx) with StatefulModule {
-  private var wiredModules: Option[WiredModules] = None
+  private var wiredModules: Box[WiredModules] = Empty
 
-  def resolveModules(wire: Boolean) = {
+  def resolveModules(wire: Boolean): Box[WiredModules] = {
     val resolved = synchronized {
       wiredModules match {
-        case Some(modules) => modules
-        case None => {
+        case f@Full(_) => f
+        case Empty => {
           // TODO do resolve outside of synchronized block!!
           val modules = doResolveModules()
 
-          if (wire)
-            wiredModules = Some(modules)
+          if (modules.isDefined && wire)
+            wiredModules = modules
 
           modules
         }
       }
     }
-
-    debugWired(resolved)
 
     resolved
   }
@@ -56,7 +54,8 @@ private[impl] class ResolvableModule(id: Long, provider: ModuleProvider, ctx: Mo
   override private[impl] def uninstall() {
     super.uninstall()
 
-    // TODO need to unwire this module from global wiring
+    // TODO this method is not yet implemented!!!
+    // TODO need to do reference counting to figure out if module can be released from global wiring
     // TODO osgi spec says that if this module is in use (i.e. packages are exported) then the module
     // TODO should hang around in a zombie state till refresh packages is called, can this be improved upon?
     synchronized {
@@ -67,8 +66,8 @@ private[impl] class ResolvableModule(id: Long, provider: ModuleProvider, ctx: Mo
 
   override def toString = provider.name + ":" + provider.version
 
-  private def doResolveModules(): WiredModules = {
-    val resolved = frameworkContext.withAnyFlatten(classOf[GlobalWiring]){
+  private def doResolveModules(): Box[WiredModules] = {
+    frameworkContext.withAnyFlatten(classOf[GlobalWiring]){
       wiring => {
         wiring.resolve(this).flatMap(resolution => {
           if (resolution.isEmpty) {
@@ -85,8 +84,6 @@ private[impl] class ResolvableModule(id: Long, provider: ModuleProvider, ctx: Mo
         })
       }
     }
-    // TODO define better exception for missing global wiring
-    resolved.openOr(throw new IllegalStateException("Expected global wiring registered"))
   }
 
 
@@ -142,20 +139,6 @@ private[impl] class ResolvableModule(id: Long, provider: ModuleProvider, ctx: Mo
       }
       case _ => Nil
     }
-  }
-
-   // TODO tidy up debug code
-  private def debugWired(wired: WiredModules) {
-//    val buf = new StringBuilder()
-//
-//    buf.append("------------Wired----------\n")
-//    buf.append(this)
-//    buf.append("\n------------Dependents--------\n")
-//    buf.append(wired.dependents.mkString("\n"))
-//    buf.append("\n------------Extensions--------\n")
-//    buf.append(wired.extensions.mkString("\n"))
-//
-//    println(buf.toString)
   }
 
   private def debugResolution(res: Map[Part, List[Wire]]) {
