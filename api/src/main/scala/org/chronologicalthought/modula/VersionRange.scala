@@ -92,7 +92,7 @@ case class VersionRange(inclusiveMin: Boolean, minimum: Version, maximum: Versio
     }
   }
 
-  override def toString = {
+  override def toString() = {
     if (inclusiveMax && inclusiveMin && maximum == Version.Infinite) {
       minimum.toString
     }
