@@ -68,7 +68,7 @@ private[impl] class ResolvableModule(id: Long, provider: ModuleProvider, ctx: Mo
   override def toString = provider.name + ":" + provider.version
 
   private def doResolveModules(): WiredModules = {
-    val resolved = frameworkContext.withAnyFlat(classOf[GlobalWiring]){
+    val resolved = frameworkContext.withAnyFlatten(classOf[GlobalWiring]){
       wiring => {
         wiring.resolve(this).flatMap(resolution => {
           if (resolution.isEmpty) {

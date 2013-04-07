@@ -107,7 +107,7 @@ trait ModuleContext {
   }
 
   // TODO don't like the name of this method, but it is very useful...
-  def withAnyFlat[T, R](clazz: Class[T])(f: (T => Box[R])): Box[R] = {
+  def withAnyFlatten[T, R](clazz: Class[T])(f: (T => Box[R])): Box[R] = {
     val refs = findReferences(clazz)
     val start: Box[(T, ServiceReference[T])] = Empty
 

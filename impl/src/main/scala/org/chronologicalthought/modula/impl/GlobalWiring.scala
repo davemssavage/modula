@@ -28,7 +28,7 @@ class GlobalWiring(context: ModuleContext) {
     synchronized {
       val environment = buildSnapshotEnvironment()
 
-      context.withAnyFlat(classOf[Resolver])(_.resolve(environment, module.requirements)).map {
+      context.withAnyFlatten(classOf[Resolver])(_.resolve(environment, module.requirements)).map {
         resolution => {
           globalWiring = globalWiring + resolution
           resolution
