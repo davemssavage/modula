@@ -21,6 +21,7 @@ import RichTypes._
 /**
  * @author David Savage
  */
+// TODO add tests for global wiring - especially for the fact that environment reuses caps/req from existing wiring
 class GlobalWiring(context: ModuleContext) {
   private var globalWiring = RichWiring.empty
 

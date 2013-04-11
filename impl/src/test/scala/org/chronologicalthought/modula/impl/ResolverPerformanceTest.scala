@@ -43,7 +43,7 @@ class ResolverPerformanceTest {
 
     when(environment.findExtensions(isA(classOf[Traversable[Capability]]))).thenReturn(Nil)
     when(environment.findProviders(isA(classOf[Traversable[Requirement]]))).thenReturn(capabilities)
-    when(environment.wiring).thenReturn(Map[Part, Traversable[Wire]]())
+    when(environment.wiring).thenReturn(Map[Part, List[Wire]]())
     when(environment.requirementFilter).thenReturn(None)
 
     val framework = createFramework()

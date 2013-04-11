@@ -118,6 +118,8 @@ class ResolverImpl extends Resolver {
   }
 
   private def doResolve(environment: Environment, requirements: Traversable[Requirement], visited: Set[Part], ticker: Ticker) = {
+    // TODO think start should include environment wiring?
+    //val start = new PartialResolution(new RichWiring(environment.wiring))
     val start = new PartialResolution(RichWiring.empty)
     val result = walk(start, requirements) {
       (resolution, requirement) => {
@@ -270,7 +272,7 @@ object ResolverTrace {
     }
   }
 
-  def endTrace: List[Frame] = {
+  def endTrace(): List[Frame] = {
     val buf = traceLocal.get
     traceLocal.set(null)
     if (buf == null) Nil

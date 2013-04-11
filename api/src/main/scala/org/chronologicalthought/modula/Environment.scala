@@ -27,5 +27,5 @@ trait Environment {
 
   def findProviders(requirements: Traversable[Requirement]): TraversableOnce[Capability]
 
-  def wiring: Map[Part, Traversable[Wire]]
+  def wiring: Map[Part, List[Wire]]
 }

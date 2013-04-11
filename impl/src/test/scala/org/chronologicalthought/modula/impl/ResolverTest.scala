@@ -46,7 +46,7 @@ class ResolverTest {
     val requirement = required("foo")
 
     when(environment.findProviders(isA(classOf[Traversable[Requirement]]))).thenReturn(Nil)
-    when(environment.wiring).thenReturn(Map[Part, Traversable[Wire]]())
+    when(environment.wiring).thenReturn(Map[Part, List[Wire]]())
     when(environment.requirementFilter).thenReturn(None)
 
     val framework = createFramework()
@@ -65,7 +65,7 @@ class ResolverTest {
     val requirement = required("foo", LDAPExpr("key=1"))
 
     when(environment.findProviders(isA(classOf[Traversable[Requirement]]))).thenReturn(capability :: Nil)
-    when(environment.wiring).thenReturn(Map[Part, Traversable[Wire]]())
+    when(environment.wiring).thenReturn(Map[Part, List[Wire]]())
     when(environment.requirementFilter).thenReturn(None)
 
     val framework = createFramework()
@@ -131,7 +131,7 @@ class ResolverTest {
 
     when(environment.findExtensions(isA(classOf[Traversable[Capability]]))).thenReturn(Nil)
     when(environment.findProviders(isA(classOf[Traversable[Requirement]]))).thenReturn(caps)
-    when(environment.wiring).thenReturn(Map[Part, Traversable[Wire]]())
+    when(environment.wiring).thenReturn(Map[Part, List[Wire]]())
     when(environment.requirementFilter).thenReturn(None)
 
     val framework = createFramework()
@@ -153,7 +153,7 @@ class ResolverTest {
 
     when(environment.findExtensions(isA(classOf[Traversable[Capability]]))).thenReturn(Nil)
     when(environment.findProviders(isA(classOf[Traversable[Requirement]]))).thenReturn(Nil)
-    when(environment.wiring).thenReturn(Map[Part, Traversable[Wire]]())
+    when(environment.wiring).thenReturn(Map[Part, List[Wire]]())
     when(environment.requirementFilter).thenReturn(None)
 
     val framework = createFramework()
@@ -176,7 +176,7 @@ class ResolverTest {
 
     when(environment.findExtensions(isA(classOf[Traversable[Capability]]))).thenReturn(Nil)
     when(environment.findProviders(isA(classOf[Traversable[Requirement]]))).thenReturn(caps)
-    when(environment.wiring).thenReturn(Map[Part, Traversable[Wire]]())
+    when(environment.wiring).thenReturn(Map[Part, List[Wire]]())
     when(environment.requirementFilter).thenReturn(None)
 
     val framework = createFramework()
@@ -202,7 +202,7 @@ class ResolverTest {
 
     when(environment.findExtensions(isA(classOf[Traversable[Capability]]))).thenReturn(Nil)
     when(environment.findProviders(isA(classOf[Traversable[Requirement]]))).thenReturn(caps)
-    when(environment.wiring).thenReturn(Map[Part, Traversable[Wire]]())
+    when(environment.wiring).thenReturn(Map[Part, List[Wire]]())
     when(environment.requirementFilter).thenReturn(None)
 
     val framework = createFramework()
@@ -237,7 +237,7 @@ class ResolverTest {
 
     when(environment.findExtensions(isA(classOf[Traversable[Capability]]))).thenReturn(Nil)
     when(environment.findProviders(isA(classOf[Traversable[Requirement]]))).thenReturn(caps)
-    when(environment.wiring).thenReturn(Map[Part, Traversable[Wire]]())
+    when(environment.wiring).thenReturn(Map[Part, List[Wire]]())
     when(environment.requirementFilter).thenReturn(None)
 
     val framework = createFramework()
@@ -280,7 +280,7 @@ class ResolverTest {
       val environment = mock(classOf[Environment])
       when(environment.findExtensions(isA(classOf[Traversable[Capability]]))).thenReturn(Nil)
       when(environment.findProviders(isA(classOf[Traversable[Requirement]]))).thenReturn(capabilities)
-      when(environment.wiring).thenReturn(Map[Part, Traversable[Wire]]())
+      when(environment.wiring).thenReturn(Map[Part, List[Wire]]())
       when(environment.requirementFilter).thenReturn(None)
 
       val delta = resolver.resolve(environment, root).openOrThrowException("Failed to resolve %s".format(root))
@@ -318,7 +318,7 @@ class ResolverTest {
 
     when(environment.findExtensions(isA(classOf[Traversable[Capability]]))).thenReturn(exts)
     when(environment.findProviders(isA(classOf[Traversable[Requirement]]))).thenReturn(caps)
-    when(environment.wiring).thenReturn(Map[Part, Traversable[Wire]]())
+    when(environment.wiring).thenReturn(Map[Part, List[Wire]]())
     when(environment.requirementFilter).thenReturn(None)
 
     val framework = createFramework()
@@ -327,9 +327,9 @@ class ResolverTest {
 
     val root = required("foo")
 
-    ResolverTrace.startTrace
+    ResolverTrace.startTrace()
     val delta = resolver.resolve(environment, root).openOrThrowException("Failed to resolve %s".format(root))
-    ResolverTrace.endTrace.foreach(frame => {
+    ResolverTrace.endTrace().foreach(frame => {
       frame match {
         case Start(wire, _, _) => println(wire)
         case _ => // ignore
@@ -337,7 +337,7 @@ class ResolverTest {
     })
 
     assertNotNull(delta)
-    assertEquals(1, delta.size)
+    assertEquals(delta.toString(), 1, delta.size)
     val part2Wire = delta.toList(0)
     assertEquals(1, part2Wire._2.size)
     part2Wire._1 match {
@@ -359,7 +359,7 @@ class ResolverTest {
 
     when(environment.findExtensions(isA(classOf[Traversable[Capability]]))).thenReturn(Nil)
     when(environment.findProviders(isA(classOf[Traversable[Requirement]]))).thenReturn(caps)
-    when(environment.wiring).thenReturn(Map[Part, Traversable[Wire]]())
+    when(environment.wiring).thenReturn(Map[Part, List[Wire]]())
     when(environment.requirementFilter).thenReturn(None)
 
     val framework = createFramework()
@@ -381,7 +381,7 @@ class ResolverTest {
 
     when(environment.findExtensions(isA(classOf[Traversable[Capability]]))).thenReturn(Nil)
     when(environment.findProviders(isA(classOf[Traversable[Requirement]]))).thenReturn(caps)
-    when(environment.wiring).thenReturn(Map[Part, Traversable[Wire]]())
+    when(environment.wiring).thenReturn(Map[Part, List[Wire]]())
     when(environment.requirementFilter).thenReturn(None)
 
     val framework = createFramework()
