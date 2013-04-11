@@ -256,6 +256,22 @@ class ResolverTest {
 
   @Test
   def resolveUsesConstraintExclusion() {
+    // part1a exports foo version 1
+    // part1b exports foo version 1.5
+    // part2a exports bar version 1 and uses foo in range [1,2)
+    // part2b exports bar version 2 and uses foo in range [1.5,2)
+    // part3 exports baz version 1 and uses bar version 2
+    // part4 exports test version 1 and imports baz version 1 and foo version [1,2)
+    //
+    // therefore...
+    //
+    // part4 depends on part3 and foo from part 1a or part1b
+    // part3 depends on part2b
+    // part2b depends on foo from part1b
+    //
+    // as there is a uses relationship on foo between part2b and part1b
+    // the only way part4 can wire correctly is to use part1b
+    // else foo would be inconsistent across the wiring
     val part1a = new MockPartBuilder("part1a").exports("foo", "1").build
 
     val part1b = new MockPartBuilder("part1b").exports("foo", "1.5").build
