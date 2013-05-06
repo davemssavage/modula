@@ -128,7 +128,7 @@ case class Requirement(namespace: String, attributes: Map[String, Any], directiv
     buf append ":"
     buf append part
     buf append "]"
-    buf.toString
+    buf.toString()
   }
 
 }
