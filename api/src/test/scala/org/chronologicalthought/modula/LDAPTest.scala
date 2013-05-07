@@ -155,6 +155,15 @@ class LDAPTest {
   }
 
   @Test
+  def shouldCompareVersions() {
+    val map = Map("version" -> "5", "test" -> "baz")
+    assertTrue(LDAPExpr("(test=baz)")(map))
+    assertTrue(LDAPExpr("(version>=5)")(map))
+    assertTrue(LDAPExpr("(version<=2147483647.2147483647.2147483647.Infinity)")(map))
+    assertTrue(LDAPExpr("(&(test=baz)(version>=5)(version<=2147483647.2147483647.2147483647.Infinity))")(map))
+  }
+
+  @Test
   def parseEqualsIntFloat() {
     assertTrue(LDAPExpr("a=1")(Map("a" -> 1)))
     assertTrue(LDAPExpr("a=1.0")(Map("a" -> 1)))

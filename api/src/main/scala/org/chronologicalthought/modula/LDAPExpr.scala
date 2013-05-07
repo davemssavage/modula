@@ -235,6 +235,8 @@ object LDAPExpr {
               l compare str.trim.toLong
             } else if (DoublePattern.matcher(str).matches) {
               l.toDouble compare str.toDouble
+            } else if (VersionPattern.matcher(str).matches) {
+              versionCompare(Version(str))
             } else {
               l.toString compare str
             }
