@@ -1,3 +1,7 @@
+seq(ScctPlugin.instrumentSettings : _*)
+
+seq(com.github.theon.coveralls.CoverallsPlugin.coverallsSettings: _*)
+
 name := "modula"
 
 version := "1.0"
