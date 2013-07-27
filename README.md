@@ -6,6 +6,27 @@ Modula is a thought experiment in Scala modularity.
 At the present time it is <em>unfinished</em> and <em>highly likely</em> to change so if you don't want to be hacking
 around with <b>breaking changes</b> this is <em>not the project you're looking for</em>.
 
+Features
+--------
+
+Modula is highly influenced by the OSGi specification but adds several unique features that make it
+interesting in it's own right.
+
+The basic building blocks in Modula are:
+
+ * Services - services are simply objects, they can be shared via a ModuleContext and act as building blocks to build
+ more complex services
+ * ModuleContext - a module context provides a mechanism to share services within a VM, it has methods to make it easy
+ to register new services or discover existing ones
+ * Module - a service that provides class and resource loading capabilities, modules may provide or require capabilities
+ they are wired together via a Resolver
+ * Framework - the framework is at the root of all Modula applications, it is a Module and provides a ModuleContext
+ * ModuleProvider - a service that can be registered to install a new module within the framework.
+
+It is worth restating one of the points from above, <b>Modules</b> <em>are</em> <b>Services</b>! This was pretty tricky to
+implement but the fact that it seems to be possible to implement a Modularity layer on top of a Services layer seems
+kinda cool :)
+
 Background
 --------
 I started to write Modula as an evening project to help me improve my knowledge of the Scala
@@ -32,27 +53,6 @@ very basic level and does not currently re-resolve dependencies after a change.
 
 I've decided to open source this project on Github as a way to see if there was any interest in this other than myself
 and hopefully solicit some help in implementing more features.
-
-Features
---------
-
-As mentioned above, Modula is highly influenced by the OSGi specification but adds several unique features that make it
-interesting in it's own right.
-
-The basic building blocks in Modula are:
-
- * Services - services are simply objects, they can be shared via a ModuleContext and act as building blocks to build
- more complex services
- * ModuleContext - a module context provides a mechanism to share services within a VM, it has methods to make it easy
- to register new services or discover existing ones
- * Module - a service that provides class and resource loading capabilities, modules may provide or require capabilities
- they are wired together via a Resolver
- * Framework - the framework is at the root of all Modula applications, it is a Module and provides a ModuleContext
- * ModuleProvider - a service that can be registered to install a new module within the framework.
-
-It is worth restating one of the points from above, <b>Modules</b> <em>are</em> <b>Services</b>! This was pretty tricky to
-implement but the fact that it seems to be possible to implement a Modularity layer on top of a Services layer seems
-kinda cool :)
 
 Project Structure
 -------------
