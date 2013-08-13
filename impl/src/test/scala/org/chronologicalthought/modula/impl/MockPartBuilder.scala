@@ -41,6 +41,8 @@ object MockPartBuilder {
   def required(name: String, expr: LDAPExpr) = Requirement(ns, name, expr)
 
   def required(name: String, expr: LDAPExpr, part: Part) = Requirement(ns, name, expr, part)
+
+  def apply(name: String) = new MockPartBuilder(new MockPart(name, Nil, Nil))
 }
 
 class MockPart(val name: String, caps: List[Capability], val reqs: List[Requirement]) extends Part {
@@ -66,10 +68,6 @@ class MockPartBuilder(p: Part) {
       Capability(host, part.name, Map.empty, Map(ExtensionExtensible -> "true"), part) :: caps
     }
     new MockPart(part.name, newCaps, part.requirements)
-  }
-
-  def this(name: String) = {
-    this (new MockPart(name, Nil, Nil))
   }
 
   def exports(name: String): MockPartBuilder = {

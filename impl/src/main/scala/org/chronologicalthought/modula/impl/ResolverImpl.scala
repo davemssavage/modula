@@ -17,6 +17,7 @@
 package org.chronologicalthought.modula.impl
 
 import annotation.tailrec
+import util.control.Breaks._
 import collection.mutable.ArrayBuffer
 import org.chronologicalthought.modula._
 import org.chronologicalthought.modula.impl.RichTypes._
@@ -37,11 +38,11 @@ class ResolverImpl extends Resolver {
         // TODO possibly policy based - eager attach extensions?
         attachExtensions(wiring, environment) match {
           case Resolved(result) => Full(result)
-          case PartialResolution(_) => Failure(throw new IllegalStateException("No valid extensions for " + requirements))
+          case PartialResolution(_) | PartialFailure(_) => Failure(throw new IllegalStateException("No valid extensions for " + requirements))
           case Failed(msg, _) => Failure(throw new IllegalStateException(msg))
         }
       }
-      case PartialResolution(_) => Failure(throw new IllegalStateException("No valid resolutions for " + requirements))
+      case PartialResolution(_) | PartialFailure(_) => Failure(throw new IllegalStateException("No valid resolutions for " + requirements))
       case Failed(msg, _) => Failure(throw new IllegalStateException(msg))
     }
   }
@@ -92,7 +93,7 @@ class ResolverImpl extends Resolver {
     val extendibles = for {
       part <- parts
       cap <- part.capabilities
-      if (cap.isExtensible)
+      if cap.isExtensible
     } yield cap
 
     if (!extendibles.isEmpty) {
@@ -117,81 +118,115 @@ class ResolverImpl extends Resolver {
     }
   }
 
-  private def doResolve(environment: Environment, requirements: Traversable[Requirement], visited: Set[Part], ticker: Ticker) = {
-    // TODO think start should include environment wiring?
+  private implicit def environmentToRichEnvironment(env: Environment): RichEnvironment = {
+    new RichEnvironment(env)
+  }
+
+  private class RichEnvironment(env: Environment) {
+    def without(cap: Capability): Environment = {
+      new Environment {
+        def findExtensions(capabilities: Traversable[Capability]) = env.findExtensions(capabilities)
+
+        def wiring = env.wiring
+
+        def findProviders(requirements: Traversable[Requirement]) = env.findProviders(requirements).filter(_ != cap)
+
+        def requirementFilter = env.requirementFilter
+      }
+    }
+  }
+
+  private def doResolve(environment: Environment, requirements: Traversable[Requirement], visited: Set[Part], ticker: Ticker): Resolution = {
+    // TODO think start should include environment wiring? causes failure in extensions if passed through
     //val start = new PartialResolution(new RichWiring(environment.wiring))
-    val start = new PartialResolution(RichWiring.empty)
-    val result = walk(start, requirements) {
-      (resolution, requirement) => {
-        ticker.tick()
-        matchProvider(environment, resolution, requirement, visited)
+    var resolution: Resolution = new PartialResolution(RichWiring.empty)
+
+    for (next <- requirements) {
+      resolution = resolution match {
+        case current@PartialResolution(wiring) => {
+          ticker.tick()
+          matchProvider(environment, current, next, visited)
+        }
+        case Resolved(wiring) => {
+          ticker.tick()
+          matchProvider(environment, new PartialResolution(wiring), next, visited)
+        }
+        case other => other
       }
     }
 
-    result match {
+    resolution match {
       case PartialResolution(wiring) => new Resolved(wiring)
+      case PartialFailure(invalid) => doResolve(environment without invalid, requirements, visited, ticker.reset())
       case other => other
     }
   }
 
-  private def matchProvider(environment: Environment, resolution: PartialResolution, requirement: Requirement, visited: Set[Part]): Resolution = {
-    val result = {
-      def relevantAndConsistent(capability: Capability) = {
-        assert(requirement != null)
-        assert(capability != null)
-        // TODO could move all consistency checks to environment? Saves a check if environment always gives a valid list
-        // capability.consistent(requirement, environment)
-        requirement.matches(capability) && capability.consistent(requirement, environment)
-      }
+  private def matchProvider(environment: Environment, start: PartialResolution, requirement: Requirement, visited: Set[Part]): Resolution = {
+    var resolution: Resolution = start
 
-      val capabilities = environment.findProviders(requirement :: Nil)
+    val capabilities = environment.findProviders(requirement :: Nil)
 
-      val ticker = new Ticker
-      val result = walk(resolution, capabilities) {
-        (resolution, capability) => {
-          if (relevantAndConsistent(capability)) {
-            ticker.tick()
-            val wire = new Wire(requirement, capability)
-            addWire(environment, wire, resolution.wiring, visited)
+    val ticker = new Ticker
+
+    breakable {
+      for (capability <- capabilities) {
+        if (ticker.ticked) {
+          break()
+        }
+
+        def check(current: PartialResolution) = {
+          if (requirement.matches(capability)) {
+            if (capability.consistent(requirement, current.wiring)) {
+              val wire = new Wire(requirement, capability)
+              val added = addWire(environment, wire, current, visited)
+              added match {
+                case Failed(_, _) => new PartialFailure(capability)
+                case r: Resolved => {
+                  ticker.tick()
+                  r
+                }
+                case other => other
+              }
+            }
+            else {
+              new PartialFailure(capability)
+            }
           }
           else {
-            resolution
+            current
           }
         }
-      }
 
-      if (ticker.ticked) {
-        result
+        resolution = resolution match {
+          case PartialResolution(_) | PartialFailure(_) => check(start)
+          case other => other
+        }
+      }
+    }
+
+    if (ticker.ticked) {
+      resolution
+    }
+    else {
+      if (requirement.isOptional) {
+        start
       }
       else {
-        new Failed("No valid providers found for " + requirement, resolution.wiring)
+        new Failed("No valid providers found for " + requirement, start.wiring)
       }
-    }
-
-    result match {
-      case f@Failed(_, _) => {
-        if (requirement.isOptional) {
-          resolution
-        }
-        else {
-          f
-        }
-      }
-      case other => other
     }
   }
 
-  private def isNewParts(visited: Set[Part], parts: List[Part]) = {
-    parts.forall(visited.contains(_) == false)
-  }
-
-  private def addWire(environment: Environment, wire: Wire, wiring: RichWiring, visited: Set[Part]): Resolution = {
-    ResolverTrace.traceAddWireStart(wire, wiring, visited)
+  private def addWire(environment: Environment, wire: Wire, resolution: PartialResolution, visited: Set[Part]): Resolution = {
+    ResolverTrace.traceAddWireStart(wire, resolution.wiring, visited)
 
     val requirement = wire.requirement
     val capability = wire.capability
 
-    val potentialWiring = wiring + wire
+    // println("Adding %s\n to \n%s".format(wire, wiring))
+
+    val potentialWiring = resolution.wiring + wire
 
     val transitiveResolution: Resolution = {
       val flat = capability.part.flatten
@@ -207,24 +242,20 @@ class ResolverImpl extends Resolver {
       case Resolved(transitive) => {
         val mergedWires = potentialWiring + transitive
         ResolverTrace.traceAddWireEnd(wire, mergedWires, visited)
-        new PartialResolution(mergedWires)
+        // TODO changing this to resolved inverts uses fixes???
+        new Resolved(mergedWires)
+      }
+      case PartialResolution(transitive) => {
+        val mergedWires = potentialWiring + transitive
+        ResolverTrace.traceAddWireEnd(wire, mergedWires, visited)
+        new Resolved(mergedWires)
       }
       case other => other
     }
   }
 
-  private def walk[T](start: PartialResolution, provider: TraversableOnce[T])(op: (PartialResolution, T) => Resolution): Resolution = {
-    var result: Resolution = start
-
-    // TODO parallel!!
-    for (part <- provider) {
-      result = result match {
-        case p: PartialResolution => op(p, part)
-        case other => return other // failed or resolved -> return to break out of provider search early
-      }
-    }
-
-    result
+  private def isNewParts(visited: Set[Part], parts: List[Part]) = {
+    parts.forall(visited.contains(_) == false)
   }
 }
 
@@ -233,6 +264,10 @@ private sealed abstract class Resolution
 private case class Resolved(wiring: RichWiring) extends Resolution
 
 private case class PartialResolution(wiring: RichWiring) extends Resolution
+
+private case class PartialFailure(invalid: Capability) extends Resolution
+
+private case class PartialFailure2(msg: String) extends Resolution
 
 private case class Failed(msg: String, wiring: RichWiring) extends Resolution
 
@@ -248,6 +283,11 @@ private class Ticker {
 
   def tick() {
     ticked = true
+  }
+
+  def reset() = {
+    ticked = false
+    this
   }
 }
 
@@ -300,10 +340,10 @@ private case class PotentialEnvironment(wiring: Map[Part, List[Wire]], parent: E
   assert(wiring != null)
   assert(parent != null)
 
-  val parts = wiring.keys
-  val capabilities = parts.flatMap(_.capabilities)
-  val requirements = parts.flatMap(_.requirements)
-  val environment = findRootEnvironment(parent)
+  val partsBeingWired = wiring.keys
+  val capabilitiesFromPartsBeingWired = partsBeingWired.flatMap(_.capabilities)
+  val requirementsFromPartsBeingWired = partsBeingWired.flatMap(_.requirements)
+  val underlyingEnvironment = findRootEnvironment(parent)
 
   @tailrec
   private def findRootEnvironment(environment: Environment): Environment = {
@@ -313,159 +353,166 @@ private case class PotentialEnvironment(wiring: Map[Part, List[Wire]], parent: E
     }
   }
 
-  def requirementFilter = environment.requirementFilter
+  def requirementFilter = underlyingEnvironment.requirementFilter
 
   def findProviders(requirements: Traversable[Requirement]) = {
     assert(requirements != null)
 
-    val matched = capabilities.filter {
+    val matched = capabilitiesFromPartsBeingWired.filter {
       cap => requirements.exists(_.matches(cap))
     }.iterator
 
-    // TODO combine iterator's here into common super class
-    new Iterator[Capability] {
-      def next() = {
-        if (matched.hasNext)
-          matched.next()
-        else {
-          val p = environmentCapabilities()
-          nextFromEnvironment(p, true) match {
-            case Some(c) => c
-            case None => throw new NoSuchElementException
-          }
-        }
-      }
-
-      def hasNext = {
-        if (matched.hasNext) true
-        else {
-          val p = environmentCapabilities()
-          nextFromEnvironment(p, false) match {
-            case Some(_) => true
-            case None => false
-          }
-        }
-      }
-
-      private var provided: Option[Iterator[Capability]] = None
-
-      private def environmentCapabilities() = {
-        provided match {
-          case Some(iterator) => iterator
-          case None => {
-            val p = environment.findProviders(requirements).toIterator
-            provided = Some(p)
-            p
-          }
-        }
-      }
-
-      private var n: Option[Capability] = None
-
-      private def nextFromEnvironment(p: Iterator[Capability], read: Boolean): Option[Capability] = {
-        n match {
-          case s@Some(c) => {
-            if (read) n = None
-            s
-          }
-          case None => {
-            @tailrec
-            def findNext(): Option[Capability] = {
-              if (p.hasNext) {
-                val cap = p.next()
-                if (requirements.exists(_.matches(cap))) Some(cap) else findNext()
-              }
-              else {
-                None
-              }
-            }
-
-            n = findNext()
-            n
-          }
-        }
-      }
+    new Iterable[Capability] {
+      def iterator = new PotentialCapabilityIterator(matched, requirements.toSet)
     }
   }
 
   def findExtensions(capabilities: Traversable[Capability]) = {
     assert(capabilities != null)
 
-    val matched = requirements.filter {
+    val matched = requirementsFromPartsBeingWired.filter {
       req => capabilities.exists(
         cap => {
           val m = req.matches(cap)
           if (m) {
-            println("Matched " + cap + "->" + req)
+            // println("Matched " + cap + "->" + req)
           }
           m
         }
       )
     }.iterator
 
-    new Iterator[Requirement] {
-      def next() = {
-        if (matched.hasNext)
-          matched.next()
-        else {
-          val p = environmentRequirements()
-          nextFromEnvironment(p, true) match {
-            case Some(c) => c
-            case None => throw new NoSuchElementException
-          }
-        }
-      }
+    new Iterable[Requirement] {
+      def iterator = new PotentialRequirementIterator(matched, capabilities)
+    }
+  }
 
-      def hasNext = {
-        if (matched.hasNext) true
-        else {
-          val p = environmentRequirements()
-          nextFromEnvironment(p, false) match {
-            case Some(_) => true
-            case None => false
-          }
-        }
-      }
-
-      private var provided: Option[Iterator[Requirement]] = None
-
-      private def environmentRequirements() = {
-        provided match {
-          case Some(iterator) => iterator
-          case None => {
-            val p = environment.findExtensions(capabilities).toIterator
-            provided = Some(p)
-            p
-          }
-        }
-      }
-
-      private var n: Option[Requirement] = None
-
-      private def nextFromEnvironment(p: Iterator[Requirement], read: Boolean): Option[Requirement] = {
-        n match {
-          case s@Some(r) => {
-            if (read) n = None
-            s
-          }
-          case None => {
-            @tailrec
-            def findNext(): Option[Requirement] = {
-              if (p.hasNext) {
-                val req = p.next()
-                if (capabilities.exists(req.matches(_))) Some(req) else findNext()
-              }
-              else {
-                None
-              }
-            }
-
-            n = findNext()
-            n
-          }
+  private[impl] class PotentialCapabilityIterator(candidates: Iterator[Capability], requirementsBeingResolved: Set[Requirement]) extends Iterator[Capability] {
+    def next() = {
+      if (candidates.hasNext)
+        candidates.next()
+      else {
+        val p = environmentCapabilities()
+        nextFromEnvironment(p, true) match {
+          case Some(c) => c
+          case None => throw new NoSuchElementException
         }
       }
     }
 
+    def hasNext = {
+      if (candidates.hasNext) true
+      else {
+        val p = environmentCapabilities()
+        nextFromEnvironment(p, false) match {
+          case Some(_) => true
+          case None => false
+        }
+      }
+    }
+
+    private var provided: Option[Iterator[Capability]] = None
+
+    private def environmentCapabilities() = {
+      provided match {
+        case Some(iterator) => iterator
+        case None => {
+          val p = underlyingEnvironment.findProviders(requirementsBeingResolved).toIterator
+          provided = Some(p)
+          p
+        }
+      }
+    }
+
+    private var n: Option[Capability] = None
+
+    private def nextFromEnvironment(p: Iterator[Capability], read: Boolean): Option[Capability] = {
+      n match {
+        case s@Some(c) => {
+          if (read) n = None
+          s
+        }
+        case None => {
+          @tailrec
+          def findNext(): Option[Capability] = {
+            if (p.hasNext) {
+              val cap = p.next()
+              if (requirementsBeingResolved.exists(_.matches(cap))) Some(cap) else findNext()
+            }
+            else {
+              None
+            }
+          }
+
+          n = findNext()
+          n
+        }
+      }
+    }
   }
+
+  private[impl] class PotentialRequirementIterator(candidates: Iterator[Requirement], capabilitiesBeingResolved: Traversable[Capability]) extends Iterator[Requirement] {
+    def next() = {
+      if (candidates.hasNext)
+        candidates.next()
+      else {
+        val p = environmentRequirements()
+        nextFromEnvironment(p, true) match {
+          case Some(c) => c
+          case None => throw new NoSuchElementException
+        }
+      }
+    }
+
+    def hasNext = {
+      if (candidates.hasNext) true
+      else {
+        val p = environmentRequirements()
+        nextFromEnvironment(p, false) match {
+          case Some(_) => true
+          case None => false
+        }
+      }
+    }
+
+    private var provided: Option[Iterator[Requirement]] = None
+
+    private def environmentRequirements() = {
+      provided match {
+        case Some(iterator) => iterator
+        case None => {
+          val p = underlyingEnvironment.findExtensions(capabilitiesBeingResolved).toIterator
+          provided = Some(p)
+          p
+        }
+      }
+    }
+
+    private var n: Option[Requirement] = None
+
+    private def nextFromEnvironment(p: Iterator[Requirement], read: Boolean): Option[Requirement] = {
+      n match {
+        case s@Some(r) => {
+          if (read) n = None
+          s
+        }
+        case None => {
+          @tailrec
+          def findNext(): Option[Requirement] = {
+            if (p.hasNext) {
+              val req = p.next()
+              if (capabilitiesBeingResolved.exists(req.matches(_))) Some(req) else findNext()
+            }
+            else {
+              None
+            }
+          }
+
+          n = findNext()
+          n
+        }
+      }
+    }
+  }
+
 }

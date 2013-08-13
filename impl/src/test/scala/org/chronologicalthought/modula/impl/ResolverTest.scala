@@ -125,7 +125,7 @@ class ResolverTest {
   def resolveSimpleRequirement() {
     val environment = mock(classOf[Environment])
 
-    val part = new MockPartBuilder("foo").exports("foo").build
+    val part = MockPartBuilder("foo").exports("foo").build
     val requirement = required("foo")
     val caps = part.capabilities
 
@@ -140,7 +140,7 @@ class ResolverTest {
 
     val delta = resolver.resolve(environment, requirement).openOrThrowException("Failed to resolve %s".format(requirement))
 
-    assertFoundPartAndWire(delta, part, new Wire(requirement, part.capabilities.head))
+    assertFoundPartAndWire(delta, part, Wire(requirement, part.capabilities.head))
   }
 
   @Test
@@ -169,9 +169,9 @@ class ResolverTest {
   def resolveSimpleTree() {
     val environment = mock(classOf[Environment])
 
-    val part1 = new MockPartBuilder("part1").exports("foo") imports ("bar") imports ("baz") build
-    val part2 = new MockPartBuilder("part2") exports ("bar") build
-    val part3 = new MockPartBuilder("part3") exports ("baz") build
+    val part1 = MockPartBuilder("part1").exports("foo") imports ("bar") imports ("baz") build
+    val part2 = MockPartBuilder("part2") exports ("bar") build
+    val part3 = MockPartBuilder("part3") exports ("baz") build
     val caps = part1.capabilities.toList ::: part2.capabilities.toList ::: part3.capabilities.toList
 
     when(environment.findExtensions(isA(classOf[Traversable[Capability]]))).thenReturn(Nil)
@@ -187,17 +187,15 @@ class ResolverTest {
 
     val delta = resolver.resolve(environment, root).openOrThrowException("Failed to resolve %s".format(root))
 
-    assertFoundPartAndWire(delta, part1, new Wire(root, part1.capabilities.head))
-    assertFoundPartAndWire(delta, part1, new Wire(part1.requirements.head, part3.capabilities.head))
-    assertFoundPartAndWire(delta, part1, new Wire(part1.requirements.tail.head, part2.capabilities.head))
+    assertFoundPartAndWires(delta, part1, Wire(root, part1.capabilities.head) :: Wire(part1.requirements.head, part3.capabilities.head) :: Wire(part1.requirements.tail.head, part2.capabilities.head) :: Nil)
   }
 
   @Test
   def resolveSimpleTransitiveRequirement() {
     val environment = mock(classOf[Environment])
 
-    val part1 = new MockPartBuilder("part1") exports ("foo") imports ("bar") build
-    val part2 = new MockPartBuilder("part2") exports ("bar") build
+    val part1 = MockPartBuilder("part1") exports ("foo") imports ("bar") build
+    val part2 = MockPartBuilder("part2") exports ("bar") build
     val caps = part1.capabilities.toList ::: part2.capabilities.toList
 
     when(environment.findExtensions(isA(classOf[Traversable[Capability]]))).thenReturn(Nil)
@@ -211,28 +209,27 @@ class ResolverTest {
 
     val root = required("foo")
 
-    ResolverTrace.startTrace()
+//    ResolverTrace.startTrace()
     val delta = resolver.resolve(environment, root).openOrThrowException("Failed to resolve %s".format(root))
-    ResolverTrace.endTrace.foreach(frame => {
-      frame match {
-        case Start(wire, _, _) => println(wire)
-        case _ => // ignore
-      }
-    })
+//    ResolverTrace.endTrace().foreach(frame => {
+//      frame match {
+//        case Start(wire, _, _) => println(wire)
+//        case _ => // ignore
+//      }
+//    })
 
     assertNotNull(delta)
     assertFalse(delta.isEmpty)
 
-    assertFoundPartAndWire(delta, part1, new Wire(root, part1.capabilities.head))
-    assertFoundPartAndWire(delta, part1, new Wire(part1.requirements.head, part2.capabilities.head))
-    assertFoundPartAndWire(delta, part2, new Wire(part1.requirements.head, part2.capabilities.head))
+    assertFoundPartAndWires(delta, part1, Wire(root, part1.capabilities.head) :: Wire(part1.requirements.head, part2.capabilities.head) :: Nil)
+    assertFoundPartAndWire(delta, part2, Wire(part1.requirements.head, part2.capabilities.head))
   }
 
   @Test
   def resolveSimpleCircularRequirement() {
     val environment = mock(classOf[Environment])
 
-    val part = new MockPartBuilder("foo") exports ("foo", "1") imports ("foo", "1") build
+    val part = MockPartBuilder("foo") exports ("foo", "1") imports ("foo", "1") build
     val caps = part.capabilities
 
     when(environment.findExtensions(isA(classOf[Traversable[Capability]]))).thenReturn(Nil)
@@ -250,7 +247,7 @@ class ResolverTest {
     assertNotNull(delta)
     assertFalse(delta.isEmpty)
 
-    assertFoundPartAndWire(delta, part, new Wire(part.requirements.head, part.capabilities.head))
+    assertFoundPartAndWires(delta, part, Wire(root, part.capabilities.head) :: Wire(part.requirements.head, part.capabilities.head) :: Nil)
   }
 
 
@@ -259,7 +256,7 @@ class ResolverTest {
     // part1a exports foo version 1
     // part1b exports foo version 1.5
     // part2a exports bar version 1 and uses foo in range [1,2)
-    // part2b exports bar version 2 and uses foo in range [1.5,2)
+    // part2b exports bar version 2 and uses foo in range [1,1.4)
     // part3 exports baz version 1 and uses bar version 2
     // part4 exports test version 1 and imports baz version 1 and foo version [1,2)
     //
@@ -267,22 +264,22 @@ class ResolverTest {
     //
     // part4 depends on part3 and foo from part 1a or part1b
     // part3 depends on part2b
-    // part2b depends on foo from part1b
+    // part2b depends on foo from part1a
     //
-    // as there is a uses relationship on foo between part2b and part1b
-    // the only way part4 can wire correctly is to use part1b
+    // as there is a uses relationship on foo between part2b and part1a
+    // the only way part4 can wire correctly is to use part1a
     // else foo would be inconsistent across the wiring
-    val part1a = new MockPartBuilder("part1a").exports("foo", "1").build
+    val part1a = MockPartBuilder("part1a").exports("foo", "1").build
 
-    val part1b = new MockPartBuilder("part1b").exports("foo", "1.5").build
+    val part1b = MockPartBuilder("part1b").exports("foo", "1.5").build
 
-    val part2a = new MockPartBuilder("part2a").imports("foo", "[1,2)").exports("bar", "1", "foo").build
+    val part2a = MockPartBuilder("part2a").imports("foo", "[1,2)").exports("bar", "1", "foo").build
 
-    val part2b = new MockPartBuilder("part2b").imports("foo", "[1.5,2)").exports("bar", "2", "foo").build
+    val part2b = MockPartBuilder("part2b").imports("foo", "[1.0,1.4)").exports("bar", "2", "foo").build
 
-    val part3 = new MockPartBuilder("part3").imports("bar", "2").exports("baz", "1", "bar").build
+    val part3 = MockPartBuilder("part3").imports("bar", "2").exports("baz", "1", "bar").build
 
-    val part4 = new MockPartBuilder("part4").imports("foo", "[1,2)").imports("baz", "1").exports("test", "1").build
+    val part4 = MockPartBuilder("part4").imports("foo", "[1,2)").imports("baz", "1").exports("test", "1").build
 
     val capabilities = part1a.capabilities.toList ::: part1b.capabilities.toList ::: part2a.capabilities.toList ::: part2b.capabilities.toList ::: part3.capabilities.toList ::: part4.capabilities.toList
 
@@ -304,19 +301,15 @@ class ResolverTest {
       assertNotNull(delta)
       assertFalse(delta.isEmpty)
 
-      printWiring(part4 :: part3 :: part2b :: part1b :: Nil, delta)
+      //printWiring(part4 :: part3 :: part2b :: part1b :: Nil, delta)
 
-      assertFoundPartAndWire(delta, part4, new Wire(root, part4.capabilities.head))
-      assertFoundPartAndWire(delta, part4, new Wire(part4.requirements.head, part3.capabilities.head))
-      assertFoundPartAndWire(delta, part4, new Wire(part4.requirements.tail.head, part1b.capabilities.head))
+      assertFoundPartAndWires(delta, part4, Wire(root, part4.capabilities.head) :: Wire(part4.requirements.head, part3.capabilities.head) :: Wire(part4.requirements.tail.head, part1a.capabilities.head) :: Nil)
 
-      assertFoundPartAndWire(delta, part3, new Wire(part4.requirements.head, part3.capabilities.head))
-      assertFoundPartAndWire(delta, part3, new Wire(part3.requirements.head, part2b.capabilities.head))
+      assertFoundPartAndWires(delta, part3, Wire(part4.requirements.head, part3.capabilities.head) :: Wire(part3.requirements.head, part2b.capabilities.head) :: Nil)
 
-      assertFoundPartAndWire(delta, part2b, new Wire(part3.requirements.head, part2b.capabilities.head))
-      assertFoundPartAndWire(delta, part2b, new Wire(part2b.requirements.head, part1b.capabilities.head))
+      assertFoundPartAndWires(delta, part2b, Wire(part3.requirements.head, part2b.capabilities.head) :: Wire(part2b.requirements.head, part1a.capabilities.head) :: Nil)
 
-      assertFoundPartAndWire(delta, part1b, new Wire(part2b.requirements.head, part1b.capabilities.head))
+      assertFoundPartAndWires(delta, part1a, Wire(part4.requirements.tail.head, part1a.capabilities.head) :: Wire(part2b.requirements.head, part1a.capabilities.head) :: Nil)
     }
 
     resolve(capabilities)
@@ -327,8 +320,8 @@ class ResolverTest {
   def resolveExtension() {
     val environment = mock(classOf[Environment])
 
-    val part1 = new MockPartBuilder("part1") exports ("foo") build
-    val part2 = new MockPartBuilder("part2") `extends` ("part1") build
+    val part1 = MockPartBuilder("part1") exports ("foo") build
+    val part2 = MockPartBuilder("part2") `extends` ("part1") build
     val caps = part1.capabilities.toList ::: part2.capabilities.toList
     val exts = part2.requirements
 
@@ -358,7 +351,7 @@ class ResolverTest {
     assertEquals(1, part2Wire._2.size)
     part2Wire._1 match {
       case c@CompositePart(parts) => {
-        assertFoundPartAndWire(delta, c, new Wire(root, c.capabilities.head))
+        assertFoundPartAndWire(delta, c, Wire(root, c.capabilities.head))
         // TODO check parts
       }
       case other => fail("Unexpected part type " + other)
@@ -369,7 +362,7 @@ class ResolverTest {
   def resolveMandatoryAttributes() {
     val environment = mock(classOf[Environment])
 
-    val part = new MockPartBuilder("foo").exports("foo", Map("bar" -> "0"), Set("bar")).build
+    val part = MockPartBuilder("foo").exports("foo", Map("bar" -> "0"), Set("bar")).build
     val requirement = required("foo", LDAPExpr("(bar=*)"))
     val caps = part.capabilities
 
@@ -384,14 +377,14 @@ class ResolverTest {
 
     val delta = resolver.resolve(environment, requirement).openOrThrowException("Failed to resolve %s".format(requirement))
 
-    assertFoundPartAndWire(delta, part, new Wire(requirement, part.capabilities.head))
+    assertFoundPartAndWire(delta, part, Wire(requirement, part.capabilities.head))
   }
 
   @Test(expected = classOf[IllegalStateException])
   def resolveMandatoryAttributesNotMatched() {
     val environment = mock(classOf[Environment])
 
-    val part = new MockPartBuilder("foo").exports("foo", Map("bar" -> "0"), Set("bar")).build
+    val part = MockPartBuilder("foo").exports("foo", Map("bar" -> "0"), Set("bar")).build
     val requirement = required("foo")
     val caps = part.capabilities
 
@@ -419,6 +412,7 @@ class ResolverTest {
       println("}")
     }
 
+    println()
     for (part <- parts) {
       delta.get(part) match {
         case Some(wires) => printWires(part, wires)
@@ -426,12 +420,18 @@ class ResolverTest {
       }
     }
 
-    Console.flush
+    Console.flush()
   }
 
   private def assertFoundPartAndWire(delta: Map[Part, Traversable[Wire]], part: Part, wire: Wire) {
+    assertFoundPartAndWires(delta, part, wire :: Nil)
+  }
+
+  private def assertFoundPartAndWires(delta: Map[Part, Traversable[Wire]], part: Part, wires: List[Wire]) {
     val wiring = delta.getOrElse(part, throw new AssertionError("Failed to resolve " + part + "\nfound:\n" + delta.keys))
-    assertTrue("Expected " + wire + " found:\n" + wiring.mkString("\n"), wiring.exists(_ == wire))
+    val msg = "Expected \n" + wires + "\n found:\n" + wiring.mkString("\n")
+    assertEquals(msg, wires.size, wiring.size)
+    assertTrue(msg, wires.forall(wire => wiring.exists(_ == wire)))
   }
 
   private def locateResolver(framework: Framework): Resolver = {
@@ -440,7 +440,6 @@ class ResolverTest {
 
   private def createFramework() = {
     val framework = newFramework()
-    val context = framework.context
     framework.start()
     framework
   }

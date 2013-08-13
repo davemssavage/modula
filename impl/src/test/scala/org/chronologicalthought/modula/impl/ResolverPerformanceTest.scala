@@ -37,7 +37,7 @@ class ResolverPerformanceTest {
     val environment = mock(classOf[Environment])
 
     // TODO causes stack overflow greater than this - needs fixing
-    val count = 400
+    val count = 200
     val parts = buildParts(count)
     val capabilities = parts.flatMap(_.capabilities)
 
@@ -63,10 +63,10 @@ class ResolverPerformanceTest {
     val parts = new ArrayBuffer[Part]
 
     for (i <- 1 until num) {
-      parts += new MockPartBuilder("part_" + i).exports("cap" + i).imports("cap" + (i + 1)).build
+      parts += MockPartBuilder("part_" + i).exports("cap" + i).imports("cap" + (i + 1)).build
     }
 
-    parts += new MockPartBuilder("part_" + num).exports("cap" + num).build
+    parts += MockPartBuilder("part_" + num).exports("cap" + num).build
 
     parts.toList
   }

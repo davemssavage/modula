@@ -23,9 +23,9 @@ package org.chronologicalthought.modula
 trait Environment {
   def requirementFilter: Option[LDAPExpr]
 
-  def findExtensions(capabilities: Traversable[Capability]): TraversableOnce[Requirement]
+  def findExtensions(capabilities: Traversable[Capability]): Traversable[Requirement]
 
-  def findProviders(requirements: Traversable[Requirement]): TraversableOnce[Capability]
+  def findProviders(requirements: Traversable[Requirement]): Traversable[Capability]
 
   def wiring: Map[Part, List[Wire]]
 }

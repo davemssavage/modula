@@ -64,6 +64,7 @@ private[impl] class RichRequirement(underlying: Requirement) extends RichHelper(
   lazy val isOptional: Boolean = ResolutionOptional == getDirective(ResolutionPolicy, ResolutionMandatory)
   lazy val isTransitive: Boolean = ResolutionTransitiveClosure == getDirective(ResolutionClosure, ResolutionTransitiveClosure)
   lazy val isExtension: Boolean = underlying.directives.get(ExtensionExtends).isDefined
+  val namespace = underlying.namespace
 
   private lazy val filterExpr = underlying.directives.get(RequirementFilter) match {
     case Some(l: LDAPExpr) => Some(l.simplify()) // TODO could optimize ldap in this part too
@@ -131,8 +132,8 @@ private[impl] class RichCapability(underlying: Capability) extends RichHelper(un
 
   // TODO make this tail recursive
   // @tailrec
-  def consistent(requirement: Requirement, environment: Environment, visited: Set[Part] = Set.empty): Boolean = {
-    def invalidWire(part: Part, wire: Wire): Boolean = {
+  def consistent(requirement: Requirement, wiring: RichWiring, visited: Map[Part, Int] = Map.empty): Boolean = {
+    def invalidWire(part: Part, wire: Wire, visited: Map[Part, Int] = Map.empty): Boolean = {
       val capability = wire.capability
 
       if (namespace == capability.namespace) {
@@ -140,7 +141,16 @@ private[impl] class RichCapability(underlying: Capability) extends RichHelper(un
           underlying != capability
         }
         else if (capability.directives.contains(CapabilityUses)) {
-          !consistent(wire.requirement, environment, visited + part)
+          val depth: Int = visited.getOrElse(part, 0)
+          if (depth > 1) {
+            // println("Stop %s -> %s".format(part, capability))
+            false
+          }
+          else {
+            val next = visited + (part -> (depth + 1))
+            // println("Go %s -> %s".format(part, capability))
+            capability.part.requirements.exists(!consistent(_, wiring, next))
+          }
         }
         else {
           false
@@ -151,20 +161,27 @@ private[impl] class RichCapability(underlying: Capability) extends RichHelper(un
       }
     }
 
-    requirement.part match {
+    val result = requirement.part match {
       case Some(part) => {
-        if (visited.contains(part)) {
-          true
-        }
-        else {
-          environment.wiring.get(part) match {
-            case Some(wiring) => !wiring.exists(invalidWire(part, _))
-            case None => true
+        wiring.get(part) match {
+          case Some(wires) => {
+            !wires.exists(wire => invalidWire(part, wire, visited))
+          }
+          case None => {
+            // println("No wires")
+            true
           }
         }
       }
-      case None => true
+      case None => {
+        // println("No part")
+        true
+      }
     }
+
+    // println("%s : \n%s\n -> \n%s\n%s".format((if (result) "consistent" else "inconsistent"), requirement, underlying, wiring))
+
+    result
   }
 }
 
@@ -173,6 +190,9 @@ private[impl] object RichWiring {
 }
 
 private[impl] class RichWiring(val underlying: Map[Part, List[Wire]]) {
+  override def toString = {
+    "Wiring[%s]".format(underlying)
+  }
   def find(part: Part): Option[Part] = {
     underlying.keys.find(_ match {
       case CompositePart(parts) => parts.contains(part)
@@ -193,7 +213,7 @@ private[impl] class RichWiring(val underlying: Map[Part, List[Wire]]) {
       tmp += part -> (wires ::: tmp.getOrElse(part, Nil))
     }
 
-    new RichWiring(tmp.toMap)
+    new RichWiring(tmp.toMap.mapValues(_.toSet.toList))
   }
 
   def +(wire: Wire): RichWiring = {
@@ -272,7 +292,14 @@ private[impl] class RichWiring(val underlying: Map[Part, List[Wire]]) {
 
   private def link(wire: Wire): RichWiring = {
     wire.requirement.part match {
-      case Some(part) => this + (wire.capability.part -> wire) + (part -> wire)
+      case Some(part) => {
+        if (wire.capability.part == part) {
+          this + (wire.capability.part -> wire)
+        }
+        else {
+          this + (wire.capability.part -> wire) + (part -> wire)
+        }
+      }
       case None => this + (wire.capability.part -> wire)
     }
   }
@@ -281,7 +308,7 @@ private[impl] class RichWiring(val underlying: Map[Part, List[Wire]]) {
     val part = partToWire._1
     val wire = partToWire._2
 
-    val existing = underlying.getOrElse(part, Nil)
+    val existing = underlying.getOrElse(part, Nil).filterNot(_ == wire)
 
     val wired = (wire :: existing)
 
@@ -298,6 +325,19 @@ private[impl] class RichWiring(val underlying: Map[Part, List[Wire]]) {
     val newWires = existing filterNot (_ == wire)
 
     new RichWiring(underlying + (part -> newWires))
+  }
+
+  override def hashCode() = 31 * underlying.hashCode()
+
+  override def equals(other: Any) = {
+    other match {
+      case v: RichWiring => {
+        if (this eq v) true
+        else if (v eq null) false
+        else underlying == v.underlying
+      }
+      case _ => false
+    }
   }
 }
 
